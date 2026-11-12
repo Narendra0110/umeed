@@ -2,9 +2,9 @@
 
 Version: 2.0
 
-Last updated: 2026-11-11
+Last updated: 2026-11-12
 
-Project status: BACKEND INITIALIZED AND VERIFIED – NEXT STEP IS THE POSTGRESQL CONNECTION
+Project status: BACKEND CONNECTED TO POSTGRESQL WITH FLYWAY – FIRST MIGRATION COMMITTED, DATABASE CHECK NOT CONFIRMED
 
 Project folder: H:\Project\Umeed
 
@@ -300,7 +300,15 @@ Not done yet:
 
 * GitHub private repository named umeed. The local repository has no remote yet.
 * Expo configuration.
-* PostgreSQL development database for Umeed (PostgreSQL is reported installed, but no database has been created or verified).
+* Adding the PostgreSQL bin folder to PATH (optional). Until then psql is run by its full path: "C:\Program Files\PostgreSQL\18\bin\psql.exe".
+
+Local database, verified from command output on 2026-11-12:
+
+* PostgreSQL 18.6, Windows service postgresql-x64-18.
+* Development database: umeed_dev.
+* Application login: umeed_app (owner of umeed_dev). The backend never connects as postgres.
+* The umeed_app password is read from the environment variable UMEED_DB_PASSWORD. It is not stored in any file. It must be set in each new command window before running the backend: set UMEED_DB_PASSWORD=... then cls.
+* PostGIS has not been installed or checked yet. It is needed when nearby discovery is built.
 
 Tasks:
 
@@ -352,11 +360,14 @@ Done:
 * Maven configuration (backend/pom.xml with Spring Web, Actuator and Validation).
 * Health endpoint: provided by Spring Boot Actuator at /actuator/health. No custom code file was needed.
 
+* PostgreSQL connection (application.properties with environment variable overrides, Spring Data JPA, PostgreSQL driver).
+* Hibernate is set to validate only (spring.jpa.hibernate.ddl-auto=validate). Flyway owns the schema.
+* Flyway added. Migrations live in backend/src/main/resources/db/migration.
+* First migration V1__create_categories.sql committed.
+
 Not done yet:
 
-* PostgreSQL connection. THIS IS THE NEXT STEP.
-* Flyway.
-* Application configuration beyond the generated default.
+* Confirm that V1 was applied to umeed_dev (see section 12).
 * Common response structure.
 * Global exception handling.
 
@@ -517,6 +528,11 @@ No hand-written application code files have been created yet. The entries below 
 | 003    | UMEED_PROJECT_INDEX.md       | COMPLETED |
 | 004    | Spring Boot initialization (approved exception) | COMPLETED |
 | 005    | UMEED_PROJECT_INDEX.md (progress update) | COMPLETED |
+| 006    | backend/src/main/resources/application.properties (database settings) | COMPLETED |
+| 007    | backend/pom.xml (Spring Data JPA and PostgreSQL driver) | COMPLETED |
+| 008    | backend/pom.xml (Flyway) | NEEDS REVIEW |
+| 009    | backend/src/main/resources/db/migration/V1__create_categories.sql | NEEDS REVIEW |
+| 010    | UMEED_PROJECT_INDEX.md (progress update) | COMPLETED |
 
 Notes:
 
@@ -529,12 +545,23 @@ Notes:
 * 004 not confirmed: the browser check of http://localhost:8080/actuator/health returning {"status":"UP"} was not confirmed to the AI.
 * 004 accepted as is: the main class is BackendApplication (not UmeedApplication) in package com.umeed, and spring.application.name is backend. This can be changed later with an approved edit.
 * 005 is the update of this file that recorded 004.
+* 006 added the datasource URL, username and password settings and the two JPA settings. URL and username default to the local database and can be overridden with UMEED_DB_URL and UMEED_DB_USERNAME. The password has no default.
+* 007 added spring-boot-starter-data-jpa, postgresql (runtime) and spring-boot-starter-data-jpa-test. Verification of 006 and 007 together: "mvnw.cmd test" run by the project owner on 2026-11-12 showed Tests run: 1, Failures: 0, Errors: 0, BUILD SUCCESS. The application cannot start with JPA unless it reaches the database, so the connection works.
+* 008 added spring-boot-starter-flyway, flyway-database-postgresql and spring-boot-starter-flyway-test. It is committed, but the test output after this change was not shown to the AI. Status NEEDS REVIEW until a passing test run is seen.
+* 009 creates the categories table (id UUID, slug, name, sort_order, is_active, created_at, updated_at, unique slug, slug format check). It is committed, but neither the test output nor the database check was shown to the AI. Status NEEDS REVIEW until the database check in section 12 is seen.
+* 010 is the update of this file that recorded 006 to 009.
+* Migration rule: a migration that has run must never be edited. Every later schema change is a new file (V2, V3 and so on).
 
 Git commits:
 
 * 0a9eef6 – Add repository foundation: gitignore, master instructions, project index.
 * 9edfa92 – Initialize Spring Boot backend (Spring Boot 4.1.2, Java 21).
-* The 005 update of this index is NOT committed yet.
+* e6f7621 – Update project index after backend initialization.
+* e3237c9 – Add database connection settings to application.properties.
+* f3115ad – Connect backend to PostgreSQL: datasource settings, JPA and driver.
+* 4aafe5f – Add Flyway for database migrations.
+* 9cdc432 – Add V1 migration: create categories table.
+* The 010 update of this index is NOT committed yet.
 
 Allowed statuses:
 
@@ -603,11 +630,13 @@ Implementation completed:
 
 * Repository foundation files 001 to 003.
 * Spring Boot backend initialized, builds and starts (004).
-* No hand-written application code yet.
+* Backend connected to the local PostgreSQL database umeed_dev (006, 007).
+* Flyway added and the first migration written (008, 009), not yet confirmed against the database.
+* No hand-written Java code yet.
 
 Repository initialized:
 
-* Yes, locally, on branch main with two commits. No GitHub repository or remote exists yet.
+* Yes, locally, on branch main with seven commits. No GitHub repository or remote exists yet.
 
 First hand-written code file:
 
@@ -634,9 +663,35 @@ Do not block unrelated development on decisions that can safely be deferred.
 
 # 12. LAST SESSION SUMMARY
 
-Date: 2026-11-11
+Date: 2026-11-12
 
-Session ended by the project owner after file 005. Development resumes from the "RESUME HERE" list below.
+Completed:
+
+* Committed the 005 index update (e6f7621).
+* Confirmed PostgreSQL 18.6 and created the umeed_app login and the umeed_dev database.
+* Added database settings to application.properties (006, e3237c9).
+* Added Spring Data JPA and the PostgreSQL driver (007, f3115ad). Test run passed with the database connected.
+* Added Flyway (008, 4aafe5f).
+* Added the first migration, V1__create_categories.sql (009, 9cdc432).
+* Updated this index (010).
+
+RESUME HERE – next steps, in order, each needing approval:
+
+1. Commit the 010 index update: git add UMEED_PROJECT_INDEX.md, then git commit -m "Update project index after database setup".
+2. Confirm that V1 was applied. In backend/, with UMEED_DB_PASSWORD set, run mvnw.cmd test and expect BUILD SUCCESS. Then run: "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U umeed_app -d umeed_dev -c "\d categories" -c "SELECT version, description, success FROM flyway_schema_history;". Expect the seven columns of categories and one history row with version 1 and success t. Then mark 008 and 009 COMPLETED.
+3. Decide the MVP category list (product decision, linked to the open question about food and medicines). Then propose V2, a migration that inserts the categories.
+4. Build the categories module in package com.umeed.categories, one approved file at a time: entity, repository, service, DTO, controller for GET /api/v1/categories.
+5. Common response structure and global exception handling in com.umeed.common.
+
+Open points:
+
+* The health endpoint browser check ({"status":"UP"}) was not confirmed.
+* No GitHub repository exists yet. Creating the private repository umeed and pushing is still to do.
+* The project owner has not granted a standing approval for index-only updates. Each index update still needs approval.
+* The AI's shell on the PC cannot start because of low disk space on the PC, so commands are run by the project owner and pasted back.
+* Twice a file written by the AI did not reach the disk on the first attempt (the 005 index update and the 008 pom.xml change). The AI now checks the file size on disk after every write. If the project is open in IntelliJ, accept any "file changed on disk, reload" prompt.
+
+Earlier session, 2026-11-11:
 
 Completed:
 
@@ -650,21 +705,6 @@ Completed:
 * Initialized Git on branch main.
 * Generated the Spring Boot backend through an approved initialization exception (004), verified it with a passing test run, and committed it (9edfa92).
 * Updated this index (005).
-
-RESUME HERE – next steps, in order, each needing approval:
-
-1. Commit the 005 index update: git add UMEED_PROJECT_INDEX.md, then git commit -m "Update project index after backend initialization".
-2. Confirm the PostgreSQL setup on the PC: installed version (psql --version), whether the service is running, and the postgres user password is known. The password must never be written into a committed file.
-3. Create a local development database for Umeed.
-4. Propose one pom.xml change adding the PostgreSQL driver and Spring Data JPA, then the database configuration, then Flyway, one approved file at a time.
-5. Verify that the backend starts while connected to PostgreSQL.
-
-Open points:
-
-* The health endpoint browser check ({"status":"UP"}) was not confirmed.
-* No GitHub repository exists yet. Creating the private repository umeed and pushing is still to do.
-* The project owner has not granted a standing approval for index-only updates. Each index update still needs approval.
-* The AI's shell on the PC could not start because of low disk space on the PC, so commands are run by the project owner and pasted back.
 
 Earlier session, 2026-11-09:
 
