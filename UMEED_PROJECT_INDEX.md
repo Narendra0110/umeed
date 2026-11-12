@@ -4,7 +4,7 @@ Version: 2.0
 
 Last updated: 2026-11-12
 
-Project status: BACKEND CONNECTED TO POSTGRESQL WITH FLYWAY – FIRST MIGRATION COMMITTED, DATABASE CHECK NOT CONFIRMED
+Project status: FIRST API ENDPOINT WORKING (GET /api/v1/categories) – NEXT IS THE OTP PROVIDER DECISION, THEN AUTHENTICATION
 
 Project folder: H:\Project\Umeed
 
@@ -98,6 +98,30 @@ The first release is an MVP. Build only the MVP items until the MVP is working e
 * Hindi language.
 * Push notifications.
 * Remembering skipped ("not interested") items.
+
+## MVP categories
+
+Decided: 2026-11-12
+
+| Slug             | Name                 | Sort order |
+| ---------------- | -------------------- | ---------- |
+| clothes          | Clothes              | 10         |
+| books-stationery | Books and stationery | 20         |
+| furniture        | Furniture            | 30         |
+| electronics      | Electronics          | 40         |
+| kitchen-home     | Kitchen and home     | 50         |
+| kids-toys        | Kids and toys        | 60         |
+| other            | Other                | 999        |
+
+* Food and medicines are intentionally excluded from the MVP.
+* Slugs are permanent codes used by the mobile app. Display names can change through a new migration. Slugs should not.
+
+## API response shape
+
+Decided: 2026-11-12
+
+* Successful responses are plain JSON without a wrapper object. Example: GET /api/v1/categories returns a JSON list of objects with id, slug and name.
+* A consistent error response format is still to be designed (global exception handling).
 
 Notes:
 
@@ -363,13 +387,12 @@ Done:
 * PostgreSQL connection (application.properties with environment variable overrides, Spring Data JPA, PostgreSQL driver).
 * Hibernate is set to validate only (spring.jpa.hibernate.ddl-auto=validate). Flyway owns the schema.
 * Flyway added. Migrations live in backend/src/main/resources/db/migration.
-* First migration V1__create_categories.sql committed.
+* Migrations V1 (create categories) and V2 (insert MVP categories) applied and verified in umeed_dev.
+* Success response shape decided: plain JSON, no wrapper (section 2A).
 
 Not done yet:
 
-* Confirm that V1 was applied to umeed_dev (see section 12).
-* Common response structure.
-* Global exception handling.
+* Global exception handling with a consistent error response format.
 
 Tasks:
 
@@ -403,6 +426,8 @@ Tasks:
 Scope: MVP
 
 Status: NOT STARTED
+
+Note: the categories module, which donations depend on, is already complete (files 009 and 011 to 016).
 
 Tasks:
 
@@ -530,9 +555,16 @@ No hand-written application code files have been created yet. The entries below 
 | 005    | UMEED_PROJECT_INDEX.md (progress update) | COMPLETED |
 | 006    | backend/src/main/resources/application.properties (database settings) | COMPLETED |
 | 007    | backend/pom.xml (Spring Data JPA and PostgreSQL driver) | COMPLETED |
-| 008    | backend/pom.xml (Flyway) | NEEDS REVIEW |
-| 009    | backend/src/main/resources/db/migration/V1__create_categories.sql | NEEDS REVIEW |
+| 008    | backend/pom.xml (Flyway) | COMPLETED |
+| 009    | backend/src/main/resources/db/migration/V1__create_categories.sql | COMPLETED |
 | 010    | UMEED_PROJECT_INDEX.md (progress update) | COMPLETED |
+| 011    | backend/src/main/resources/db/migration/V2__insert_categories.sql | COMPLETED |
+| 012    | backend/src/main/java/com/umeed/categories/Category.java | COMPLETED |
+| 013    | backend/src/main/java/com/umeed/categories/CategoryRepository.java | COMPLETED |
+| 014    | backend/src/main/java/com/umeed/categories/CategoryResponse.java | COMPLETED |
+| 015    | backend/src/main/java/com/umeed/categories/CategoryService.java | COMPLETED |
+| 016    | backend/src/main/java/com/umeed/categories/CategoryController.java | COMPLETED |
+| 017    | UMEED_PROJECT_INDEX.md (progress update) | COMPLETED |
 
 Notes:
 
@@ -547,9 +579,15 @@ Notes:
 * 005 is the update of this file that recorded 004.
 * 006 added the datasource URL, username and password settings and the two JPA settings. URL and username default to the local database and can be overridden with UMEED_DB_URL and UMEED_DB_USERNAME. The password has no default.
 * 007 added spring-boot-starter-data-jpa, postgresql (runtime) and spring-boot-starter-data-jpa-test. Verification of 006 and 007 together: "mvnw.cmd test" run by the project owner on 2026-11-12 showed Tests run: 1, Failures: 0, Errors: 0, BUILD SUCCESS. The application cannot start with JPA unless it reaches the database, so the connection works.
-* 008 added spring-boot-starter-flyway, flyway-database-postgresql and spring-boot-starter-flyway-test. It is committed, but the test output after this change was not shown to the AI. Status NEEDS REVIEW until a passing test run is seen.
-* 009 creates the categories table (id UUID, slug, name, sort_order, is_active, created_at, updated_at, unique slug, slug format check). It is committed, but neither the test output nor the database check was shown to the AI. Status NEEDS REVIEW until the database check in section 12 is seen.
+* 008 added spring-boot-starter-flyway, flyway-database-postgresql and spring-boot-starter-flyway-test.
+* 009 creates the categories table (id UUID, slug, name, sort_order, is_active, created_at, updated_at, unique slug, slug format check).
 * 010 is the update of this file that recorded 006 to 009.
+* 011 inserts the seven MVP categories (section 2A).
+* Verification of 008, 009 and 011: psql output shown on 2026-11-12 listed the seven category rows in order, and flyway_schema_history showed version 1 (create categories) and version 2 (insert categories), both successful.
+* 012 is the read-only JPA entity for categories. 013 is the package-private Spring Data repository with findByActiveTrueOrderBySortOrderAsc. 014 is the public response record with id, slug and name. 015 is the public service with listActiveCategories. 016 is the package-private controller for GET /api/v1/categories.
+* Module boundary rule applied in categories: the repository and controller are package-private. Other modules use CategoryService and CategoryResponse only.
+* Verification of 012 to 016: on 2026-11-12 the project owner ran the application and opened http://localhost:8080/api/v1/categories in a browser. The screenshot showed all seven categories as JSON in the correct order. The test output for these files was not shown to the AI, but the application cannot start and serve this response unless the code compiles and the entity matches the table.
+* 017 is the update of this file that recorded 011 to 016.
 * Migration rule: a migration that has run must never be edited. Every later schema change is a new file (V2, V3 and so on).
 
 Git commits:
@@ -561,7 +599,13 @@ Git commits:
 * f3115ad – Connect backend to PostgreSQL: datasource settings, JPA and driver.
 * 4aafe5f – Add Flyway for database migrations.
 * 9cdc432 – Add V1 migration: create categories table.
-* The 010 update of this index is NOT committed yet.
+* 87604bf – Update project index after database setup.
+* a487145 – Add V2 migration: insert MVP categories.
+* 5486e99 – Add Category entity.
+* a0f4b9d – Add CategoryRepository.
+* 914fe5e – Add categories module: entity, repository, response DTO.
+* dccba50 – Add categories module with GET /api/v1/categories.
+* The 017 update of this index is NOT committed yet.
 
 Allowed statuses:
 
@@ -631,16 +675,16 @@ Implementation completed:
 * Repository foundation files 001 to 003.
 * Spring Boot backend initialized, builds and starts (004).
 * Backend connected to the local PostgreSQL database umeed_dev (006, 007).
-* Flyway added and the first migration written (008, 009), not yet confirmed against the database.
-* No hand-written Java code yet.
+* Flyway added, migrations V1 and V2 applied and verified (008, 009, 011).
+* Categories module complete and working: GET /api/v1/categories (012 to 016).
 
 Repository initialized:
 
-* Yes, locally, on branch main with seven commits. No GitHub repository or remote exists yet.
+* Yes, locally, on branch main with thirteen commits. No GitHub repository or remote exists yet.
 
 First hand-written code file:
 
-* Not started.
+* Done: Category.java (012).
 
 ---
 
@@ -648,7 +692,7 @@ First hand-written code file:
 
 These decisions must be discussed before implementation reaches the relevant feature:
 
-* Final authentication provider and OTP delivery provider.
+* Final authentication provider and OTP delivery provider. THIS IS THE NEXT DECISION. Options discussed on 2026-11-12: Firebase Authentication (less work, handles sending, checking and abuse protection, backend verifies the Firebase ID token) or an Indian SMS provider such as MSG91 or 2Factor (more backend work, needs DLT sender and template registration). The AI leaned towards Firebase for the MVP. Both charge per SMS and current prices were not verified. The project owner has not decided yet.
 * Production hosting provider.
 * Object storage provider.
 * Exact database-per-module strategy.
@@ -670,26 +714,30 @@ Completed:
 * Committed the 005 index update (e6f7621).
 * Confirmed PostgreSQL 18.6 and created the umeed_app login and the umeed_dev database.
 * Added database settings to application.properties (006, e3237c9).
-* Added Spring Data JPA and the PostgreSQL driver (007, f3115ad). Test run passed with the database connected.
+* Added Spring Data JPA and the PostgreSQL driver (007, f3115ad).
 * Added Flyway (008, 4aafe5f).
-* Added the first migration, V1__create_categories.sql (009, 9cdc432).
-* Updated this index (010).
+* Added migrations V1 and V2 for categories (009, 9cdc432 and 011, a487145). Verified in the database.
+* Decided the MVP category list and the plain JSON response shape.
+* Built the categories module (012 to 016). GET /api/v1/categories returns the seven categories, verified in a browser.
+* Updated this index (010 and 017).
 
 RESUME HERE – next steps, in order, each needing approval:
 
-1. Commit the 010 index update: git add UMEED_PROJECT_INDEX.md, then git commit -m "Update project index after database setup".
-2. Confirm that V1 was applied. In backend/, with UMEED_DB_PASSWORD set, run mvnw.cmd test and expect BUILD SUCCESS. Then run: "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U umeed_app -d umeed_dev -c "\d categories" -c "SELECT version, description, success FROM flyway_schema_history;". Expect the seven columns of categories and one history row with version 1 and success t. Then mark 008 and 009 COMPLETED.
-3. Decide the MVP category list (product decision, linked to the open question about food and medicines). Then propose V2, a migration that inserts the categories.
-4. Build the categories module in package com.umeed.categories, one approved file at a time: entity, repository, service, DTO, controller for GET /api/v1/categories.
-5. Common response structure and global exception handling in com.umeed.common.
+1. Commit the 017 index update: git add UMEED_PROJECT_INDEX.md, then git commit -m "Update project index after categories module".
+2. Decide the OTP provider (section 11). Check current SMS pricing against the monthly budget of about 2,000 rupees first.
+3. Design the users table and propose it as migration V3.
+4. Build authentication one approved file at a time: Spring Security dependency, user entity, token verification, JWT, profile endpoints.
+5. Global exception handling with a consistent error response format in com.umeed.common. This can be done before or alongside authentication.
 
 Open points:
 
-* The health endpoint browser check ({"status":"UP"}) was not confirmed.
-* No GitHub repository exists yet. Creating the private repository umeed and pushing is still to do.
+* The health endpoint browser check ({"status":"UP"}) was not confirmed. The application is known to run, because the categories endpoint responds.
+* No GitHub repository exists yet. Creating the private repository umeed and pushing is still to do. Until then the only copy of the code is on the PC.
 * The project owner has not granted a standing approval for index-only updates. Each index update still needs approval.
 * The AI's shell on the PC cannot start because of low disk space on the PC, so commands are run by the project owner and pasted back.
-* Twice a file written by the AI did not reach the disk on the first attempt (the 005 index update and the 008 pom.xml change). The AI now checks the file size on disk after every write. If the project is open in IntelliJ, accept any "file changed on disk, reload" prompt.
+* Three times a file written by the AI did not reach the disk on the first attempt (the 005 and 010 index updates and the 008 pom.xml change). Cause: when the AI rewrote a file and transferred it immediately, the transfer picked up the previous version. It was not caused by IntelliJ. The AI now waits before transferring and checks the file size on disk after every write.
+* PostGIS has not been installed or checked yet.
+* There are no automated tests for the categories module yet. Only the generated context-load test exists.
 
 Earlier session, 2026-11-11:
 
