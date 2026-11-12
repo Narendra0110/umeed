@@ -4,7 +4,7 @@ Version: 2.0
 
 Last updated: 2026-11-12
 
-Project status: FIRST API ENDPOINT WORKING (GET /api/v1/categories) – NEXT IS THE OTP PROVIDER DECISION, THEN AUTHENTICATION
+Project status: CATEGORIES API WORKING, CODE BACKED UP ON GITHUB – NEXT IS AUTHENTICATION WITH FIREBASE, STARTING WITH THE USERS TABLE (FILE 018, PROPOSED, NOT APPROVED)
 
 Project folder: H:\Project\Umeed
 
@@ -319,10 +319,10 @@ Done:
 
 * Git repository initialized on branch main (2026-11-11).
 * Maven is provided by the Maven Wrapper in backend/ (mvnw.cmd). No separate Maven installation is needed.
+* GitHub repository created and pushed on 2026-11-12: https://github.com/Narendra0110/umeed (remote origin, branch main tracks origin/main). The project owner was asked to confirm it is Private; that confirmation was not shown to the AI. After every git commit, run git push.
 
 Not done yet:
 
-* GitHub private repository named umeed. The local repository has no remote yet.
 * Expo configuration.
 * Adding the PostgreSQL bin folder to PATH (optional). Until then psql is run by its full path: "C:\Program Files\PostgreSQL\18\bin\psql.exe".
 
@@ -565,6 +565,8 @@ No hand-written application code files have been created yet. The entries below 
 | 015    | backend/src/main/java/com/umeed/categories/CategoryService.java | COMPLETED |
 | 016    | backend/src/main/java/com/umeed/categories/CategoryController.java | COMPLETED |
 | 017    | UMEED_PROJECT_INDEX.md (progress update) | COMPLETED |
+| 018    | backend/src/main/resources/db/migration/V3__create_users.sql | PROPOSED |
+| 019    | UMEED_PROJECT_INDEX.md (end of session save) | COMPLETED |
 
 Notes:
 
@@ -588,6 +590,8 @@ Notes:
 * Module boundary rule applied in categories: the repository and controller are package-private. Other modules use CategoryService and CategoryResponse only.
 * Verification of 012 to 016: on 2026-11-12 the project owner ran the application and opened http://localhost:8080/api/v1/categories in a browser. The screenshot showed all seven categories as JSON in the correct order. The test output for these files was not shown to the AI, but the application cannot start and serve this response unless the code compiles and the entity matches the table.
 * 017 is the update of this file that recorded 011 to 016.
+* 018 is PROPOSED only. It has NOT been approved and the file does NOT exist. The proposed design is in section 12.
+* 019 is the end of session save of this file, requested by the project owner on 2026-11-12.
 * Migration rule: a migration that has run must never be edited. Every later schema change is a new file (V2, V3 and so on).
 
 Git commits:
@@ -605,7 +609,8 @@ Git commits:
 * a0f4b9d – Add CategoryRepository.
 * 914fe5e – Add categories module: entity, repository, response DTO.
 * dccba50 – Add categories module with GET /api/v1/categories.
-* The 017 update of this index is NOT committed yet.
+* All commits were pushed to GitHub on 2026-11-12. The AI did not see whether the 017 index update was committed before that push. If git status shows UMEED_PROJECT_INDEX.md as modified, it is covered by the 019 commit.
+* The 019 update of this index is NOT committed or pushed yet.
 
 Allowed statuses:
 
@@ -680,7 +685,7 @@ Implementation completed:
 
 Repository initialized:
 
-* Yes, locally, on branch main with thirteen commits. No GitHub repository or remote exists yet.
+* Yes, on branch main, pushed to the GitHub repository Narendra0110/umeed.
 
 First hand-written code file:
 
@@ -688,11 +693,25 @@ First hand-written code file:
 
 ---
 
+# 10A. AUTHENTICATION DESIGN
+
+Decided: 2026-11-12
+
+* OTP provider: Firebase Authentication (phone sign-in).
+* Flow: the mobile app asks Firebase to send and check the OTP. Firebase gives the app a signed ID token. The app sends that token with every request. The backend verifies the token signature against Google's public keys, then finds or creates the matching user in the users table.
+* The backend needs only the Firebase project ID, which is not a secret. No Firebase service account key is stored on the server or in Git.
+* The Firebase ID token is a JWT, which satisfies the JWT requirement in the master instructions.
+* The backend never trusts a user ID or role sent by the client. The user is always resolved from the verified token.
+* During development, Firebase test phone numbers with fixed codes are used, so no real SMS is sent.
+* Not verified: current Firebase SMS pricing and whether a billing plan upgrade is needed before real SMS can be sent. Check before launch against the monthly budget of about 2,000 rupees.
+
+---
+
 # 11. OUTSTANDING DECISIONS
 
 These decisions must be discussed before implementation reaches the relevant feature:
 
-* Final authentication provider and OTP delivery provider. THIS IS THE NEXT DECISION. Options discussed on 2026-11-12: Firebase Authentication (less work, handles sending, checking and abuse protection, backend verifies the Firebase ID token) or an Indian SMS provider such as MSG91 or 2Factor (more backend work, needs DLT sender and template registration). The AI leaned towards Firebase for the MVP. Both charge per SMS and current prices were not verified. The project owner has not decided yet.
+* Push notification provider details, when notifications are built (post-MVP).
 * Production hosting provider.
 * Object storage provider.
 * Exact database-per-module strategy.
@@ -719,25 +738,60 @@ Completed:
 * Added migrations V1 and V2 for categories (009, 9cdc432 and 011, a487145). Verified in the database.
 * Decided the MVP category list and the plain JSON response shape.
 * Built the categories module (012 to 016). GET /api/v1/categories returns the seven categories, verified in a browser.
-* Updated this index (010 and 017).
+* Updated this index (010, 017 and 019).
+* Created the private GitHub repository Narendra0110/umeed and pushed all commits.
+* Decided the OTP provider: Firebase Authentication (section 10A).
+* Session ended by the project owner after file 019.
 
 RESUME HERE – next steps, in order, each needing approval:
 
-1. Commit the 017 index update: git add UMEED_PROJECT_INDEX.md, then git commit -m "Update project index after categories module".
-2. Decide the OTP provider (section 11). Check current SMS pricing against the monthly budget of about 2,000 rupees first.
-3. Design the users table and propose it as migration V3.
-4. Build authentication one approved file at a time: Spring Security dependency, user entity, token verification, JWT, profile endpoints.
-5. Global exception handling with a consistent error response format in com.umeed.common. This can be done before or alongside authentication.
+1. Commit and push the 019 index update: git add UMEED_PROJECT_INDEX.md, then git commit -m "Update project index: GitHub backup, Firebase decision, resume point", then git push.
+2. Project owner: create the Firebase project. At https://console.firebase.google.com create a project named umeed, open Build then Authentication, enable the Phone sign-in provider, add a test phone number with a fixed code, and note the Project ID from Project settings. Give the Project ID to the AI. It is not a secret.
+3. File 018, V3__create_users.sql, is proposed below and waits for APPROVE. It does not depend on the Firebase project.
+4. After 018: add the Spring Security and OAuth2 resource server dependencies to pom.xml, then the user entity, repository and service, then the security configuration that verifies Firebase ID tokens, then a GET /api/v1/users/me endpoint. One approved file at a time.
+5. Global exception handling with a consistent error response format in com.umeed.common.
+
+Proposed content of file 018 (NOT approved, NOT created). Path: backend/src/main/resources/db/migration/V3__create_users.sql
+
+```sql
+-- Application users. Identity is proven by Firebase phone authentication.
+CREATE TABLE users (
+    id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+    firebase_uid  VARCHAR(128),
+    phone_number  VARCHAR(20),
+    display_name  VARCHAR(80),
+    role          VARCHAR(20)  NOT NULL DEFAULT 'USER',
+    status        VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    deleted_at    TIMESTAMPTZ,
+    CONSTRAINT uq_users_firebase_uid UNIQUE (firebase_uid),
+    CONSTRAINT uq_users_phone_number UNIQUE (phone_number),
+    CONSTRAINT ck_users_role CHECK (role IN ('USER', 'ADMIN')),
+    CONSTRAINT ck_users_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DELETED')),
+    CONSTRAINT ck_users_phone_format CHECK (phone_number ~ '^\+[1-9][0-9]{7,14}$'),
+    CONSTRAINT ck_users_identity_present CHECK (
+        status = 'DELETED' OR (firebase_uid IS NOT NULL AND phone_number IS NOT NULL)
+    )
+);
+```
+
+Design notes for file 018:
+
+* Phone numbers are stored in international format, for example +919876543210.
+* On account deletion the row is kept so old donation records still make sense, but firebase_uid and phone_number are wiped. Only DELETED users may have them empty. The same person can then register again with the same number.
+* role is set only by the server.
+* No address or location columns yet. Those belong to donations and pickup.
 
 Open points:
 
 * The health endpoint browser check ({"status":"UP"}) was not confirmed. The application is known to run, because the categories endpoint responds.
-* No GitHub repository exists yet. Creating the private repository umeed and pushing is still to do. Until then the only copy of the code is on the PC.
-* The project owner has not granted a standing approval for index-only updates. Each index update still needs approval.
+* The project owner has not granted a standing approval for index-only updates. Each index update still needs approval. The 019 update was made because the project owner asked to save the work.
 * The AI's shell on the PC cannot start because of low disk space on the PC, so commands are run by the project owner and pasted back.
 * Three times a file written by the AI did not reach the disk on the first attempt (the 005 and 010 index updates and the 008 pom.xml change). Cause: when the AI rewrote a file and transferred it immediately, the transfer picked up the previous version. It was not caused by IntelliJ. The AI now waits before transferring and checks the file size on disk after every write.
 * PostGIS has not been installed or checked yet.
 * There are no automated tests for the categories module yet. Only the generated context-load test exists.
+* UMEED_DB_PASSWORD must be set again in every new command window before running the backend.
 
 Earlier session, 2026-11-11:
 
