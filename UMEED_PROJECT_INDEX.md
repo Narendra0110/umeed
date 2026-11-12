@@ -4,7 +4,7 @@ Version: 2.0
 
 Last updated: 2026-11-11
 
-Project status: MVP PLANNING COMPLETE – ENVIRONMENT SETUP IN PROGRESS – APPLICATION CODE NOT STARTED
+Project status: BACKEND INITIALIZED AND VERIFIED – NEXT STEP IS THE POSTGRESQL CONNECTION
 
 Project folder: H:\Project\Umeed
 
@@ -291,11 +291,16 @@ Reported installed by the project owner, not verified by AI:
 * PostgreSQL.
 * Git user name and email configuration.
 
+Done:
+
+* Git repository initialized on branch main (2026-11-11).
+* Maven is provided by the Maven Wrapper in backend/ (mvnw.cmd). No separate Maven installation is needed.
+
 Not done yet:
 
-* Git repository initialization (git init).
-* GitHub private repository named umeed.
+* GitHub private repository named umeed. The local repository has no remote yet.
 * Expo configuration.
+* PostgreSQL development database for Umeed (PostgreSQL is reported installed, but no database has been created or verified).
 
 Tasks:
 
@@ -315,6 +320,17 @@ Scope: MVP (admin project is post-MVP)
 
 Status: IN PROGRESS
 
+Done:
+
+* Repository initialized.
+* Backend project prepared in backend/.
+* Shared documentation established (master instructions and this index).
+
+Not done yet:
+
+* Mobile project.
+* Admin project (post-MVP).
+
 Tasks:
 
 * Initialize repository.
@@ -328,7 +344,21 @@ Tasks:
 
 Scope: MVP
 
-Status: NOT STARTED
+Status: IN PROGRESS
+
+Done:
+
+* Spring Boot setup (Spring Boot 4.1.2, Java 21, package com.umeed).
+* Maven configuration (backend/pom.xml with Spring Web, Actuator and Validation).
+* Health endpoint: provided by Spring Boot Actuator at /actuator/health. No custom code file was needed.
+
+Not done yet:
+
+* PostgreSQL connection. THIS IS THE NEXT STEP.
+* Flyway.
+* Application configuration beyond the generated default.
+* Common response structure.
+* Global exception handling.
 
 Tasks:
 
@@ -478,19 +508,33 @@ Tasks:
 
 # 7. FILE-BY-FILE PROGRESS TRACKER
 
-No application code files have been created yet. The files below are repository foundation files.
+No hand-written application code files have been created yet. The entries below are repository foundation files and the generated backend project.
 
 | Number | File                         | Status    |
 | ------ | ---------------------------- | --------- |
 | 001    | .gitignore                   | COMPLETED |
 | 002    | UMEED_MASTER_INSTRUCTIONS.md | COMPLETED |
 | 003    | UMEED_PROJECT_INDEX.md       | COMPLETED |
+| 004    | Spring Boot initialization (approved exception) | COMPLETED |
+| 005    | UMEED_PROJECT_INDEX.md (progress update) | COMPLETED |
 
 Notes:
 
-* 001 was created and confirmed present in the project folder. It has not been tested with Git yet, because the repository is not initialized.
+* 001 was created and confirmed present in the project folder. Git reads it correctly: git status showed only the intended files.
 * 002 was compared line by line against the original master instructions. Only the project name and the Java version changed.
 * 003 is this file.
+* 004 was a one-time approved initialization exception. The project was generated with Spring Initializr (start.spring.io) and extracted to backend/. Settings: Maven, Java 21, Spring Boot 4.1.2, group com.umeed, artifact backend, package com.umeed, dependencies Spring Web, Spring Boot Actuator and Validation.
+* 004 generated these files, all inspected: backend/pom.xml, backend/mvnw, backend/mvnw.cmd, backend/.mvn/wrapper/maven-wrapper.properties, backend/.gitignore, backend/.gitattributes, backend/src/main/java/com/umeed/BackendApplication.java, backend/src/main/resources/application.properties, backend/src/test/java/com/umeed/BackendApplicationTests.java. backend/HELP.md was also generated but is ignored by Git.
+* 004 verification: "mvnw.cmd test" was run by the project owner on 2026-11-11. Result: Tests run: 1, Failures: 0, Errors: 0, BUILD SUCCESS, on Java 21.0.11. "mvnw.cmd spring-boot:run" started the application and it shut down cleanly.
+* 004 not confirmed: the browser check of http://localhost:8080/actuator/health returning {"status":"UP"} was not confirmed to the AI.
+* 004 accepted as is: the main class is BackendApplication (not UmeedApplication) in package com.umeed, and spring.application.name is backend. This can be changed later with an approved edit.
+* 005 is the update of this file that recorded 004.
+
+Git commits:
+
+* 0a9eef6 – Add repository foundation: gitignore, master instructions, project index.
+* 9edfa92 – Initialize Spring Boot backend (Spring Boot 4.1.2, Java 21).
+* The 005 update of this index is NOT committed yet.
 
 Allowed statuses:
 
@@ -557,14 +601,15 @@ Planning completed:
 
 Implementation completed:
 
-* Repository foundation files 001 to 003 only.
-* No application code.
+* Repository foundation files 001 to 003.
+* Spring Boot backend initialized, builds and starts (004).
+* No hand-written application code yet.
 
 Repository initialized:
 
-* No. git init has not been run. No GitHub repository exists yet.
+* Yes, locally, on branch main with two commits. No GitHub repository or remote exists yet.
 
-First code file:
+First hand-written code file:
 
 * Not started.
 
@@ -591,6 +636,8 @@ Do not block unrelated development on decisions that can safely be deferred.
 
 Date: 2026-11-11
 
+Session ended by the project owner after file 005. Development resumes from the "RESUME HERE" list below.
+
 Completed:
 
 * Renamed the app from GiveLoop to Umeed everywhere: app name, package com.umeed, repository name umeed and document filenames.
@@ -599,22 +646,25 @@ Completed:
 * Verified Node.js, npm, Git and Java versions from command output.
 * Decided the MVP scope (section 2A).
 * Decided the Home feed design (section 2B).
-* Created file 001 .gitignore.
-* Created file 002 UMEED_MASTER_INSTRUCTIONS.md.
-* Created file 003 UMEED_PROJECT_INDEX.md.
+* Created files 001 to 003 and committed them (0a9eef6).
+* Initialized Git on branch main.
+* Generated the Spring Boot backend through an approved initialization exception (004), verified it with a passing test run, and committed it (9edfa92).
+* Updated this index (005).
 
-Not completed:
+RESUME HERE – next steps, in order, each needing approval:
 
-* Git repository initialization.
-* GitHub repository creation.
-* Spring Boot project generation.
-* Database configuration.
-* Application code.
+1. Commit the 005 index update: git add UMEED_PROJECT_INDEX.md, then git commit -m "Update project index after backend initialization".
+2. Confirm the PostgreSQL setup on the PC: installed version (psql --version), whether the service is running, and the postgres user password is known. The password must never be written into a committed file.
+3. Create a local development database for Umeed.
+4. Propose one pom.xml change adding the PostgreSQL driver and Spring Data JPA, then the database configuration, then Flyway, one approved file at a time.
+5. Verify that the backend starts while connected to PostgreSQL.
 
-Suggested next steps, each needing approval:
+Open points:
 
-* Run git init in the project folder and check git status.
-* Propose the Spring Boot project initialization (backend/pom.xml, through an approved Spring Initializr exception) using Java 21 and package com.umeed.
+* The health endpoint browser check ({"status":"UP"}) was not confirmed.
+* No GitHub repository exists yet. Creating the private repository umeed and pushing is still to do.
+* The project owner has not granted a standing approval for index-only updates. Each index update still needs approval.
+* The AI's shell on the PC could not start because of low disk space on the PC, so commands are run by the project owner and pasted back.
 
 Earlier session, 2026-11-09:
 
