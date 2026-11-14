@@ -2,9 +2,9 @@
 
 Version: 2.0
 
-Last updated: 2026-11-12
+Last updated: 2026-11-13
 
-Project status: CATEGORIES API WORKING, CODE BACKED UP ON GITHUB – NEXT IS AUTHENTICATION WITH FIREBASE, STARTING WITH THE USERS TABLE (FILE 018, PROPOSED, NOT APPROVED)
+Project status: USERS TABLE MIGRATION (FILE 018) CREATED BUT NOT YET RUN OR COMMITTED – NEXT IS TO VERIFY IT, THEN ADD SPRING SECURITY (FILE 020, PROPOSED, NOT APPROVED)
 
 Project folder: H:\Project\Umeed
 
@@ -565,8 +565,10 @@ No hand-written application code files have been created yet. The entries below 
 | 015    | backend/src/main/java/com/umeed/categories/CategoryService.java | COMPLETED |
 | 016    | backend/src/main/java/com/umeed/categories/CategoryController.java | COMPLETED |
 | 017    | UMEED_PROJECT_INDEX.md (progress update) | COMPLETED |
-| 018    | backend/src/main/resources/db/migration/V3__create_users.sql | PROPOSED |
+| 018    | backend/src/main/resources/db/migration/V3__create_users.sql | NEEDS REVIEW |
 | 019    | UMEED_PROJECT_INDEX.md (end of session save) | COMPLETED |
+| 020    | backend/pom.xml (Spring Security with OAuth2 resource server) | PROPOSED |
+| 021    | UMEED_PROJECT_INDEX.md (end of session save) | COMPLETED |
 
 Notes:
 
@@ -590,7 +592,9 @@ Notes:
 * Module boundary rule applied in categories: the repository and controller are package-private. Other modules use CategoryService and CategoryResponse only.
 * Verification of 012 to 016: on 2026-11-12 the project owner ran the application and opened http://localhost:8080/api/v1/categories in a browser. The screenshot showed all seven categories as JSON in the correct order. The test output for these files was not shown to the AI, but the application cannot start and serve this response unless the code compiles and the entity matches the table.
 * 017 is the update of this file that recorded 011 to 016.
-* 018 is PROPOSED only. It has NOT been approved and the file does NOT exist. The proposed design is in section 12.
+* 018 was approved and created on 2026-11-13 with exactly the proposed content (1,012 bytes on disk). It creates the users table: id, firebase_uid, phone_number, display_name, role, status, created_at, updated_at, deleted_at, with unique, role, status, phone format and identity-present constraints. It has NOT been run, verified or committed as far as the AI has seen. Status NEEDS REVIEW until the database check in section 12 is shown. Because it has not run, it may still be edited if a change is wanted. Once it has run, it must never be edited.
+* 020 is PROPOSED only. It has NOT been approved and pom.xml has NOT been changed. Details are in section 12.
+* 021 is the end of session save of this file, requested by the project owner on 2026-11-13.
 * 019 is the end of session save of this file, requested by the project owner on 2026-11-12.
 * Migration rule: a migration that has run must never be edited. Every later schema change is a new file (V2, V3 and so on).
 
@@ -610,7 +614,8 @@ Git commits:
 * 914fe5e – Add categories module: entity, repository, response DTO.
 * dccba50 – Add categories module with GET /api/v1/categories.
 * All commits were pushed to GitHub on 2026-11-12. The AI did not see whether the 017 index update was committed before that push. If git status shows UMEED_PROJECT_INDEX.md as modified, it is covered by the 019 commit.
-* The 019 update of this index is NOT committed or pushed yet.
+* The AI did not see whether the 019 index update was committed and pushed.
+* File 018 and the 021 update of this index are NOT committed or pushed yet, as far as the AI has seen.
 
 Allowed statuses:
 
@@ -699,6 +704,8 @@ Decided: 2026-11-12
 
 * OTP provider: Firebase Authentication (phone sign-in).
 * Flow: the mobile app asks Firebase to send and check the OTP. Firebase gives the app a signed ID token. The app sends that token with every request. The backend verifies the token signature against Google's public keys, then finds or creates the matching user in the users table.
+* Firebase project ID: umeed-2e018 (given by the project owner on 2026-11-13). The AI has not seen the Firebase console, so Phone sign-in being enabled and the test phone number are reported by the project owner, not verified.
+* Token checks the backend must make: signature against Google public keys, issuer https://securetoken.google.com/umeed-2e018, audience umeed-2e018, and expiry.
 * The backend needs only the Firebase project ID, which is not a secret. No Firebase service account key is stored on the server or in Git.
 * The Firebase ID token is a JWT, which satisfies the JWT requirement in the master instructions.
 * The backend never trusts a user ID or role sent by the client. The user is always resolved from the verified token.
@@ -726,7 +733,38 @@ Do not block unrelated development on decisions that can safely be deferred.
 
 # 12. LAST SESSION SUMMARY
 
-Date: 2026-11-12
+Date: 2026-11-13
+
+Completed:
+
+* Project owner created the Firebase project. Project ID: umeed-2e018.
+* File 018, V3__create_users.sql, approved and created. Not yet run.
+* File 020 proposed (not approved).
+* Updated this index (021).
+* Session ended by the project owner after file 021.
+
+RESUME HERE – next steps, in order, each needing approval:
+
+1. Verify file 018. In backend/, with UMEED_DB_PASSWORD set, run mvnw.cmd test and expect BUILD SUCCESS. Then run: "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U umeed_app -d umeed_dev -c "\d users" -c "SELECT version, description, success FROM flyway_schema_history;". Expect nine columns in users and three history rows (versions 1, 2, 3), all successful. Show the output to the AI.
+2. Commit and push: git add backend/src/main/resources/db/migration/V3__create_users.sql, git commit -m "Add V3 migration: create users table", then git add UMEED_PROJECT_INDEX.md, git commit -m "Update project index: users table, Firebase project ID, resume point", then git push.
+3. File 020, proposed and waiting for APPROVE: change backend/pom.xml to add spring-boot-starter-security-oauth2-resource-server and spring-boot-starter-security-oauth2-resource-server-test. The AI could not confirm these two artifact names for Spring Boot 4.1.2, because it could not reach Maven Central. If a name is wrong, the build fails with "could not find artifact" and the name is corrected. A way to confirm the names: on start.spring.io select Spring Boot 4.1.2, add the "OAuth2 Resource Server" dependency, click EXPLORE and read the pom.xml shown.
+4. After 020, Spring Security locks every endpoint by default, including GET /api/v1/categories and /actuator/health. That is expected until the next file. The next file is the security configuration: public access to GET /api/v1/categories and /actuator/health, everything else requires a valid Firebase ID token for project umeed-2e018, stateless sessions, and the token checks listed in section 10A.
+5. Then, one approved file at a time: user entity, repository and service (find or create the user from the verified token), and GET /api/v1/users/me.
+6. Global exception handling with a consistent error response format in com.umeed.common.
+
+Open points:
+
+* The health endpoint browser check ({"status":"UP"}) was not confirmed. The application is known to run, because the categories endpoint responds.
+* The project owner has not granted a standing approval for index-only updates. Index saves 019 and 021 were made because the project owner asked to save the work.
+* The AI's shell on the PC cannot start because of low disk space on the PC, so commands are run by the project owner and pasted back.
+* The AI's own environment cannot reach Maven Central, so it cannot check dependency names or versions itself.
+* When the AI rewrites a file and transfers it immediately, the transfer can pick up the previous version. The AI waits before transferring and checks the file size on disk after every write.
+* PostGIS has not been installed or checked yet.
+* There are no automated tests for the categories module yet. Only the generated context-load test exists.
+* UMEED_DB_PASSWORD must be set again in every new command window before running the backend.
+* Whether the GitHub repository is Private was not confirmed to the AI.
+
+Earlier session, 2026-11-12:
 
 Completed:
 
@@ -742,56 +780,6 @@ Completed:
 * Created the private GitHub repository Narendra0110/umeed and pushed all commits.
 * Decided the OTP provider: Firebase Authentication (section 10A).
 * Session ended by the project owner after file 019.
-
-RESUME HERE – next steps, in order, each needing approval:
-
-1. Commit and push the 019 index update: git add UMEED_PROJECT_INDEX.md, then git commit -m "Update project index: GitHub backup, Firebase decision, resume point", then git push.
-2. Project owner: create the Firebase project. At https://console.firebase.google.com create a project named umeed, open Build then Authentication, enable the Phone sign-in provider, add a test phone number with a fixed code, and note the Project ID from Project settings. Give the Project ID to the AI. It is not a secret.
-3. File 018, V3__create_users.sql, is proposed below and waits for APPROVE. It does not depend on the Firebase project.
-4. After 018: add the Spring Security and OAuth2 resource server dependencies to pom.xml, then the user entity, repository and service, then the security configuration that verifies Firebase ID tokens, then a GET /api/v1/users/me endpoint. One approved file at a time.
-5. Global exception handling with a consistent error response format in com.umeed.common.
-
-Proposed content of file 018 (NOT approved, NOT created). Path: backend/src/main/resources/db/migration/V3__create_users.sql
-
-```sql
--- Application users. Identity is proven by Firebase phone authentication.
-CREATE TABLE users (
-    id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    firebase_uid  VARCHAR(128),
-    phone_number  VARCHAR(20),
-    display_name  VARCHAR(80),
-    role          VARCHAR(20)  NOT NULL DEFAULT 'USER',
-    status        VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE',
-    created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
-    deleted_at    TIMESTAMPTZ,
-    CONSTRAINT uq_users_firebase_uid UNIQUE (firebase_uid),
-    CONSTRAINT uq_users_phone_number UNIQUE (phone_number),
-    CONSTRAINT ck_users_role CHECK (role IN ('USER', 'ADMIN')),
-    CONSTRAINT ck_users_status CHECK (status IN ('ACTIVE', 'SUSPENDED', 'DELETED')),
-    CONSTRAINT ck_users_phone_format CHECK (phone_number ~ '^\+[1-9][0-9]{7,14}$'),
-    CONSTRAINT ck_users_identity_present CHECK (
-        status = 'DELETED' OR (firebase_uid IS NOT NULL AND phone_number IS NOT NULL)
-    )
-);
-```
-
-Design notes for file 018:
-
-* Phone numbers are stored in international format, for example +919876543210.
-* On account deletion the row is kept so old donation records still make sense, but firebase_uid and phone_number are wiped. Only DELETED users may have them empty. The same person can then register again with the same number.
-* role is set only by the server.
-* No address or location columns yet. Those belong to donations and pickup.
-
-Open points:
-
-* The health endpoint browser check ({"status":"UP"}) was not confirmed. The application is known to run, because the categories endpoint responds.
-* The project owner has not granted a standing approval for index-only updates. Each index update still needs approval. The 019 update was made because the project owner asked to save the work.
-* The AI's shell on the PC cannot start because of low disk space on the PC, so commands are run by the project owner and pasted back.
-* Three times a file written by the AI did not reach the disk on the first attempt (the 005 and 010 index updates and the 008 pom.xml change). Cause: when the AI rewrote a file and transferred it immediately, the transfer picked up the previous version. It was not caused by IntelliJ. The AI now waits before transferring and checks the file size on disk after every write.
-* PostGIS has not been installed or checked yet.
-* There are no automated tests for the categories module yet. Only the generated context-load test exists.
-* UMEED_DB_PASSWORD must be set again in every new command window before running the backend.
 
 Earlier session, 2026-11-11:
 
