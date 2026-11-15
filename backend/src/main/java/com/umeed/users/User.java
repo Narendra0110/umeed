@@ -63,6 +63,10 @@ public class User {
         return user;
     }
 
+    void changeDisplayName(String displayName) {
+        this.displayName = displayName.strip();
+    }
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
