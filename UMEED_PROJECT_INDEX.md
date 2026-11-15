@@ -4,7 +4,7 @@ Version: 2.0
 
 Last updated: 2026-11-17
 
-Project status: MVP BACKEND COMPLETE AND VERIFIED END TO END WITH REAL FIREBASE TOKENS – NEXT IS THE MOBILE APP (BATCH M01 PROPOSED, NOT APPROVED)
+Project status: MOBILE APP STARTED – BATCH M01 APPROVED – PART 1 (ENVIRONMENT AND PROJECT GENERATION, DONE BY THE PROJECT OWNER) IN PROGRESS
 
 Project folder: H:\Project\Umeed
 
@@ -690,7 +690,7 @@ From 2026-11-15 work is tracked by feature batch, not by file number.
 | B04   | Claims: V6__create_claims.sql; claims module (Claim, ClaimRepository, CreateClaimRequest, ClaimResponse, ClaimService, ClaimController); donations additions (DonationSummary, DonationRemovedEvent, row locks, reserve, markReserved); ClaimApiTests | COMPLETED |
 | B05   | Pickup: V7__add_handover_confirmation.sql; pickup module (PickupResponse, PickupService, PickupController); additions to Donation, DonationService, DonationPickupDetails, ClaimRepository, ClaimService, UserService, UserContact; PickupApiTests | COMPLETED |
 | B06   | Report a listing: V8__create_reports.sql; reports module (Report, ReportRepository, CreateReportRequest, ReportResponse, ReportService, ReportController); ReportApiTests | COMPLETED |
-| M01   | Mobile app setup: Expo project in apps/mobile, Firebase phone login, profile setup screen | PROPOSED |
+| M01   | Mobile app setup: Expo project in apps/mobile, Firebase phone login, profile setup screen. Approved 2026-11-17 with app id com.umeed.app and a local Android development build. Split into part 1 (environment and Expo project generation, done by the project owner) and part 2 (screens and API client, written by the AI after inspecting the generated project). | IN PROGRESS |
 
 Notes:
 
@@ -950,8 +950,19 @@ Batch B06 result: ship reported Tests run: 38, Failures: 0, Errors: 0, BUILD SUC
 RESUME HERE – next steps, in order:
 
 1. Done on 2026-11-15 (clock time on the PC): manual check with real Firebase tokens for two users (donor and receiver, the second using a second Firebase test phone number). The project owner reported that every step matched: profile, posting with a real photo (location rounded, no pickup address in the reply), nearby feed, photo download, own-claim refused, claim, claims visible to the donor only, pickup details hidden before acceptance, accept, pickup details for both parties, both confirmations completing the donation, report and duplicate report, 401 without a token. Lessons: a Firebase ID token expires after one hour (the backend correctly answers 401 "Jwt expired"); a phone number that is not saved as a Firebase test number makes Firebase try a real SMS and fail with BILLING_NOT_ENABLED.
-2. Batch M01, the first mobile app batch, is proposed and waits for APPROVE plus decisions: the app identifier (suggested com.umeed.app for both Android and iOS), and the plan to test on a real Android phone with an Expo development build built locally with Android Studio (Expo Go cannot run Firebase phone login). Proposed contents: an approved Expo initialization exception that creates apps/mobile (TypeScript, Expo Router); the agreed libraries (TanStack Query, Zustand, React Hook Form, Zod) and the React Native Firebase auth library; screens: phone number, OTP code, profile setup (display name), and a placeholder home screen; an API client that sends the Firebase token and reads the ApiError shape; the backend address set by an environment variable (a phone must use the PC's network address, not localhost). The AI must check the current Expo and React Native Firebase setup documentation before writing, because these change often.
-3. iOS builds need a Mac or Expo's cloud build service; to be decided later.
+2. Batch M01 approved on 2026-11-17: app identifier com.umeed.app (Android and iOS); test on a real Android phone with a development build made locally (Expo Go cannot run React Native Firebase).
+3. M01 part 1, done by the project owner (steps given on 2026-11-17; session ended at step 4, the Firebase Android app, on 2026-11-17; steps 1 to 3 status unknown, ask): install JDK 17 (winget install Microsoft.OpenJDK.17); in Android Studio SDK Manager install Android SDK Platform 36; set ANDROID_HOME to %LOCALAPPDATA%\Android\Sdk and add its platform-tools folder to Path; set GRADLE_USER_HOME to a folder on H: to keep the large Gradle cache off the full C: drive; add an Android app com.umeed.app in the Firebase console (Project settings, General, the "Add app" button at the top right of the Your apps section, then the Android icon; the project so far only has the umeed-test web app) and save google-services.json into apps/mobile (it is ignored by Git); generate the project with npx create-expo-app@latest mobile --template default@sdk-58 inside H:\Project\Umeed\apps. After that the AI inspects the generated files and reports before anything is committed.
+4. M01 part 2, written by the AI: remove the template's example screens; install expo-dev-client, @react-native-firebase/app, @react-native-firebase/auth and the agreed libraries; app.json plugins and googleServicesFile; screens for phone number, OTP code, profile setup and a placeholder home; an API client that sends the Firebase token and reads ApiError; the backend address from an environment variable. Then: npx expo prebuild --clean, get the debug SHA-1 and add it to the Firebase Android app, npx expo run:android with the phone connected by USB.
+5. iOS builds need a Mac or Expo's cloud build service; later.
+
+Mobile setup facts checked on 2026-11-17 (they change often, check again if a step fails):
+
+* Expo: SDK 58 was being introduced; npx create-expo-app@latest without a template still created SDK 57, and --template default@sdk-58 creates SDK 58. The default template has Expo Router and TypeScript plus example screens. Source: docs.expo.dev/more/create-expo
+* React Native Firebase does not run in Expo Go. Needs expo-dev-client, the plugins @react-native-firebase/app and @react-native-firebase/auth in app.json, then npx expo prebuild --clean and npx expo run:android. Sources: docs.expo.dev/guides/using-firebase, rnfirebase.io/auth/phone-auth
+* React Native Firebase v26 (July 2026) removed the old namespaced API (firebase.auth()); only the modular API (getAuth, signInWithPhoneNumber) remains, and it requires the React Native New Architecture.
+* Phone auth on Android: add the debug signing key's SHA-1 to the Firebase Android app. Test phone numbers sign in without an SMS.
+* Local Android builds on Windows: JDK 17, ANDROID_HOME, Android SDK Platform 36 (Android 16), USB debugging on the phone. Source: docs.expo.dev/get-started/set-up-your-environment
+* The phone reaches the backend through the PC's Wi-Fi address, not localhost. Windows Firewall may ask to allow Java on private networks.
 
 Manual check with a real token (cmd). Get FB_TOKEN with the recipe below first, and keep the backend running in a second window (cd /d H:\Project\Umeed\backend, then mvnw.cmd spring-boot:run).
 
