@@ -7,6 +7,7 @@ import com.umeed.users.UserResponse;
 import com.umeed.users.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -20,6 +21,7 @@ import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -40,18 +42,21 @@ public class DonationService {
     private final FileStorage fileStorage;
     private final UserService userService;
     private final CategoryService categoryService;
+    private final ApplicationEventPublisher eventPublisher;
 
     DonationService(
             DonationRepository donationRepository,
             DonationImageRepository donationImageRepository,
             FileStorage fileStorage,
             UserService userService,
-            CategoryService categoryService) {
+            CategoryService categoryService,
+            ApplicationEventPublisher eventPublisher) {
         this.donationRepository = donationRepository;
         this.donationImageRepository = donationImageRepository;
         this.fileStorage = fileStorage;
         this.userService = userService;
         this.categoryService = categoryService;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -150,6 +155,66 @@ public class DonationService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Only an available donation can be removed");
         }
         donation.markRemoved();
+        eventPublisher.publishEvent(new DonationRemovedEvent(donationId));
+    }
+
+    // ----- For other modules (claims, pickup). These never expose private details. -----
+
+    /**
+     * Basic facts about a donation. Removed donations are treated as not found.
+     */
+    @Transactional(readOnly = true)
+    public DonationSummary getSummary(UUID donationId) {
+        return donationRepository.findById(donationId)
+                .filter(found -> found.getStatus() != Donation.Status.REMOVED)
+                .map(DonationSummary::from)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Donation not found"));
+    }
+
+    /**
+     * Confirms a donation can be claimed and holds it steady until the caller's transaction ends,
+     * so it cannot be reserved or removed while a claim is being saved.
+     */
+    @Transactional
+    public DonationSummary lockClaimable(UUID donationId) {
+        Donation donation = donationRepository.findForShareById(donationId)
+                .filter(found -> found.getStatus() != Donation.Status.REMOVED)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Donation not found"));
+        if (donation.getStatus() != Donation.Status.AVAILABLE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This donation is no longer available");
+        }
+        return DonationSummary.from(donation);
+    }
+
+    /**
+     * Reserves a donation for an accepted claim. Only its donor may do this, and only while it is available.
+     * The row is locked, so two acceptances cannot both succeed.
+     */
+    @Transactional
+    public DonationSummary reserve(UUID donationId, UUID donorUserId) {
+        Donation donation = donationRepository.findForUpdateById(donationId)
+                .filter(found -> found.getStatus() != Donation.Status.REMOVED)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Donation not found"));
+        if (!donation.getDonorId().equals(donorUserId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the donor can accept a claim");
+        }
+        if (donation.getStatus() != Donation.Status.AVAILABLE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This donation is no longer available");
+        }
+        donation.markReserved();
+        return DonationSummary.from(donation);
+    }
+
+    /**
+     * Titles for the given donation ids, including reserved, completed and removed ones.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, String> titlesByIds(Collection<UUID> donationIds) {
+        Map<UUID, String> titles = new HashMap<>();
+        for (Donation donation : donationRepository.findAllById(donationIds)) {
+            titles.put(donation.getId(), donation.getTitle());
+        }
+        return titles;
     }
 
     /**

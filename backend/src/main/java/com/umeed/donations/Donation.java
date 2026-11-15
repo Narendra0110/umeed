@@ -106,6 +106,11 @@ public class Donation {
         this.status = Status.REMOVED;
     }
 
+    /** The donor has accepted a claim. The item leaves the feed. */
+    void markReserved() {
+        this.status = Status.RESERVED;
+    }
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();

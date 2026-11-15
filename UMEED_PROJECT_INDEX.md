@@ -4,7 +4,7 @@ Version: 2.0
 
 Last updated: 2026-11-16
 
-Project status: BATCH B03 (NEARBY FEED, MY DONATIONS, REMOVE A LISTING) WRITTEN, NOT YET VERIFIED – WAITING FOR THE ship RESULT
+Project status: BATCH B04 (CLAIMS) WRITTEN, NOT YET VERIFIED – WAITING FOR THE ship RESULT
 
 Project folder: H:\Project\Umeed
 
@@ -144,6 +144,19 @@ Decided: 2026-11-15
 * The public donation response never contains the pickup address or the donor phone number.
 * A donor must have completed their profile (display name set) before posting.
 * Login first, decided on 2026-11-15: the feed, a single donation and photos are visible only to logged-in users. Nothing about donations is public. Only GET /api/v1/categories and /actuator/health stay public.
+
+## Claim decisions
+
+Decided: 2026-11-16
+
+* There is no limit on how many open claims one person can have.
+* Any number of people can claim the same item until the donor accepts one claim.
+* When the donor accepts a claim: that claim becomes ACCEPTED, every other pending claim on the item becomes REJECTED, and the item's status becomes RESERVED. A reserved item leaves the feed. It is still listed under the donor's "my donations" and the claimants' "my claims", where the app can show it in its own section by status.
+* The project owner's words were that after acceptance the item "will be added under other category". The AI understood this as the status-based section described above, not as a change of the item's product category (Clothes, Books and so on). To be confirmed.
+* A person can claim a given item once. Withdrawing a pending claim is final for that item in the MVP (AI suggestion; the project owner did not object).
+* A donor cannot claim their own item. Only AVAILABLE items can be claimed. The claimant needs a completed profile.
+* The donor sees claimants' names and messages only. Phone numbers and the pickup address are revealed in the pickup batch (B05).
+* When a donor removes a listing, its pending claims are rejected automatically.
 
 ---
 
@@ -654,7 +667,8 @@ From 2026-11-15 work is tracked by feature batch, not by file number.
 | ----- | -------- | ------ |
 | B01   | Workflow change: UMEED_MASTER_INSTRUCTIONS.md version 3.0, ship.cmd, first automated API tests (CategoryApiTests, SecurityRulesTests, UserApiTests), this index | COMPLETED |
 | B02   | Post and browse donations: CategoryService.isActiveCategory, DonationService, DonationController, FileController, PageResponse, upload limits, GlobalExceptionHandler additions, DonationApiTests | COMPLETED |
-| B03   | Nearby-first feed, my donations, remove a listing: DonationRepository, Donation.markRemoved, DonationService, DonationController, 4 new tests in DonationApiTests | NEEDS REVIEW |
+| B03   | Nearby-first feed, my donations, remove a listing: DonationRepository, Donation.markRemoved, DonationService, DonationController, 4 new tests in DonationApiTests | COMPLETED |
+| B04   | Claims: V6__create_claims.sql; claims module (Claim, ClaimRepository, CreateClaimRequest, ClaimResponse, ClaimService, ClaimController); donations additions (DonationSummary, DonationRemovedEvent, row locks, reserve, markReserved); ClaimApiTests | NEEDS REVIEW |
 
 Notes:
 
@@ -815,9 +829,14 @@ As of 2026-11-15, all verified by hand:
 | POST   | /api/v1/donations    | Firebase token needed | Post a donation. Multipart form: categoryId, title, description, itemCondition, city, area, latitude, longitude, pickupAddress, and 1 to 5 files named photos. Answers 201. |
 | GET    | /api/v1/donations    | Firebase token needed | The feed: available donations, newest first. Parameters page (default 0) and size (default 20, maximum 50). Answers items, page, size, totalItems, totalPages, hasNext. |
 | GET    | /api/v1/donations/{id} | Firebase token needed | One donation. 404 if unknown or removed. |
-| GET    | /api/v1/donations?lat=..&lng=.. | Firebase token needed | The feed sorted nearest first, then newest. Both lat and lng are needed. The caller's location is not stored. (B03, not yet verified) |
-| GET    | /api/v1/donations/mine | Firebase token needed | The caller's own donations in every status except removed. (B03, not yet verified) |
-| DELETE | /api/v1/donations/{id} | Firebase token needed | Remove a listing. Only the donor, only while AVAILABLE. Answers 204. The row is kept with status REMOVED. (B03, not yet verified) |
+| GET    | /api/v1/donations?lat=..&lng=.. | Firebase token needed | The feed sorted nearest first, then newest. Both lat and lng are needed. The caller's location is not stored. |
+| GET    | /api/v1/donations/mine | Firebase token needed | The caller's own donations in every status except removed. |
+| DELETE | /api/v1/donations/{id} | Firebase token needed | Remove a listing. Only the donor, only while AVAILABLE. Answers 204. The row is kept with status REMOVED. |
+| POST   | /api/v1/donations/{id}/claims | Firebase token needed | Claim an item. Optional body {"message": "..."} up to 300 characters. Answers 201. (B04, not yet verified) |
+| GET    | /api/v1/donations/{id}/claims | Firebase token needed | Donor only: all claims on the item, oldest first, with claimant names. (B04, not yet verified) |
+| POST   | /api/v1/claims/{id}/accept | Firebase token needed | Donor only: accept one claim. Rejects the others and reserves the item. (B04, not yet verified) |
+| POST   | /api/v1/claims/{id}/withdraw | Firebase token needed | Claimant only: withdraw a pending claim. (B04, not yet verified) |
+| GET    | /api/v1/claims/mine  | Firebase token needed | The caller's own claims, newest first, paged. (B04, not yet verified) |
 | GET    | /api/v1/files/...    | Firebase token needed | A stored photo, at the address given in imageUrls. |
 
 * Every other address answers 401 without a valid token.
@@ -881,11 +900,22 @@ Batch B02 result: shipped on 2026-11-15 (clock time on the PC). ship reported Te
 
 Batch B03 was approved and written on 2026-11-16. No migration. Editing a listing was deliberately left out of the MVP: a donor removes the post and creates a new one. Photos of a removed listing are kept in storage for now.
 
+Batch B03 result: ship reported Tests run: 24, Failures: 0, Errors: 0, BUILD SUCCESS, committed and pushed as a0449fe. It passed on the first run, including the hand-written distance query.
+
+Batch B04 was approved on 2026-11-16 (the migration was shown in full first) and written. Notes:
+
+* Safety against double acceptance has two layers: the donation row is locked while a claim is accepted, and the database has a partial unique index allowing only one ACCEPTED claim per donation.
+* Claim status changes use guarded updates ("change only if still PENDING"), so a claim withdrawn at the same moment is never accepted by mistake.
+* Submitting a claim takes a shared lock on the donation, so a claim cannot slip in while the donor is accepting another one.
+* Modules stay separate: claims talk to donations only through DonationService (getSummary, lockClaimable, reserve, titlesByIds) and react to DonationRemovedEvent.
+* Not covered by automated tests: true simultaneous requests from two users (the tests run one request at a time).
+* V6 has not run yet. Once ship succeeds it must never be edited.
+
 RESUME HERE – next steps, in order:
 
-1. The project owner runs from H:\Project\Umeed: ship "Add nearby feed, my donations and remove listing". Expected: Tests run: 24, Failures: 0, Errors: 0 and SHIPPED. B03 was written without being compiled, so a failure on the first run is possible. The part most likely to need a fix is the distance query in DonationRepository (hand-written SQL).
-2. After B03 passes, mark it COMPLETED and propose B04, claims: a new migration (shown in full first), submit a claim, donor sees claims and accepts one, other claims are closed, the donation becomes RESERVED, with protection against two claims being accepted at once.
-3. Then B05, pickup: the pickup address and both phone numbers are revealed to the donor and the accepted receiver only; both sides confirm completion.
+1. The project owner runs from H:\Project\Umeed: ship "Add claims: submit, accept, withdraw". Expected: Tests run: 30, Failures: 0, Errors: 0 and SHIPPED. B04 was written without being compiled, so a failure on the first run is possible.
+2. Confirm with the project owner what "added under other category" means (see "Claim decisions" in section 2A).
+3. After B04 passes, mark it COMPLETED and propose B05, pickup: the pickup address and both phone numbers are revealed to the donor and the accepted receiver only; both sides confirm completion; the donation becomes COMPLETED. Anything revealing private data is shown in full before it is written.
 4. Then reports, then the mobile app.
 
 How to get a Firebase ID token for testing (all in cmd; the Web API Key, the token and passwords must not be pasted to the AI):
