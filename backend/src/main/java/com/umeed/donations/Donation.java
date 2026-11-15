@@ -101,6 +101,11 @@ public class Donation {
         return Math.round(coordinate * 100.0) / 100.0;
     }
 
+    /** Takes the listing down. The row is kept so claims and reports that point at it stay valid. */
+    void markRemoved() {
+        this.status = Status.REMOVED;
+    }
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();

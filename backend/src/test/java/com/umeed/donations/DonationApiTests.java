@@ -20,12 +20,16 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -104,6 +108,36 @@ class DonationApiTests {
                 .param("longitude", "75.89371")
                 .param("pickupAddress", "Flat 12, Test Residency, Vijay Nagar, Indore");
         return form;
+    }
+
+    private static RequestPostProcessor otherUserToken() {
+        return jwt().jwt(token -> token.subject("test-uid-donation-api-other").claim("phone_number", "+919000000003"));
+    }
+
+    /** Posts a donation as the main test donor and returns its id. */
+    private String postDonation(String title, String latitude, String longitude) throws Exception {
+        MockMultipartHttpServletRequestBuilder form = multipart("/api/v1/donations");
+        form.param("categoryId", firstCategoryId())
+                .param("title", title)
+                .param("description", "Posted by an automated test, in good condition.")
+                .param("itemCondition", "GOOD")
+                .param("city", "Test city")
+                .param("area", "Test area")
+                .param("latitude", latitude)
+                .param("longitude", longitude)
+                .param("pickupAddress", "Flat 12, Test Residency, Test area, Test city");
+        form.file(photo("a.png", "image/png", PNG));
+        String created = mockMvc.perform(form.with(verifiedToken()))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(created, "$.id");
+    }
+
+    private List<String> feedIds(String query) throws Exception {
+        String body = mockMvc.perform(get("/api/v1/donations" + query).with(verifiedToken()))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return JsonPath.read(body, "$.items[*].id");
     }
 
     private static MockMultipartFile photo(String name, String type, byte[] bytes) {
@@ -239,5 +273,73 @@ class DonationApiTests {
                 .andExpect(status().isNotFound());
         mockMvc.perform(get("/api/v1/files/donations/notes.txt").with(verifiedToken()))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void feedWithLocationIsSortedNearestFirst() throws Exception {
+        registerDonor(true);
+        String indore = postDonation("Item in Indore", "22.75", "75.89");
+        String delhi = postDonation("Item in Delhi", "28.61", "77.21");
+
+        List<String> nearIndore = feedIds("?lat=22.72&lng=75.86&size=50");
+        assertTrue(nearIndore.contains(indore) && nearIndore.contains(delhi));
+        assertTrue(nearIndore.indexOf(indore) < nearIndore.indexOf(delhi), "Indore item should come first near Indore");
+
+        List<String> nearDelhi = feedIds("?lat=28.60&lng=77.20&size=50");
+        assertTrue(nearDelhi.indexOf(delhi) < nearDelhi.indexOf(indore), "Delhi item should come first near Delhi");
+    }
+
+    @Test
+    void feedLocationMustBeCompleteAndValid() throws Exception {
+        mockMvc.perform(get("/api/v1/donations?lat=22.72").with(verifiedToken()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Send both lat and lng, or neither"));
+        mockMvc.perform(get("/api/v1/donations?lat=122.72&lng=75.86").with(verifiedToken()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Invalid location"));
+    }
+
+    @Test
+    void myDonationsShowsOnlyTheCallersOwnListings() throws Exception {
+        registerDonor(true);
+        String id = postDonation("My own item", "22.75", "75.89");
+
+        mockMvc.perform(get("/api/v1/donations/mine").with(verifiedToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].id", hasItem(id)));
+
+        mockMvc.perform(get("/api/v1/users/me").with(otherUserToken()))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/donations/mine").with(otherUserToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(0));
+    }
+
+    @Test
+    void onlyTheDonorCanRemoveAListingAndItThenDisappears() throws Exception {
+        registerDonor(true);
+        String id = postDonation("Item to remove", "22.75", "75.89");
+
+        mockMvc.perform(get("/api/v1/users/me").with(otherUserToken()))
+                .andExpect(status().isOk());
+        mockMvc.perform(delete("/api/v1/donations/" + id).with(otherUserToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("Only the donor can remove this donation"));
+
+        mockMvc.perform(delete("/api/v1/donations/" + id).with(verifiedToken()))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/v1/donations/" + id).with(verifiedToken()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/v1/donations?size=50").with(verifiedToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].id", not(hasItem(id))));
+        mockMvc.perform(get("/api/v1/donations/mine").with(verifiedToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].id", not(hasItem(id))));
+        mockMvc.perform(delete("/api/v1/donations/" + id).with(verifiedToken()))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(delete("/api/v1/donations/" + id))
+                .andExpect(status().isUnauthorized());
     }
 }

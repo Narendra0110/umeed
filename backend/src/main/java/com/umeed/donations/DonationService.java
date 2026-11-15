@@ -115,6 +115,44 @@ public class DonationService {
     }
 
     /**
+     * The feed sorted by distance from the caller's location, nearest first. The location is not stored.
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<DonationResponse> listFeedNearest(double latitude, double longitude, Pageable pageable) {
+        Page<Donation> page = donationRepository.findAvailableNearestFirst(latitude, longitude, pageable);
+        return PageResponse.of(toResponses(page));
+    }
+
+    /**
+     * The caller's own donations in every status except removed, newest first.
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<DonationResponse> listMine(String firebaseUid, Pageable pageable) {
+        UserResponse donor = userService.requireActiveUser(firebaseUid);
+        Page<Donation> page = donationRepository.findByDonorIdAndStatusNotOrderByCreatedAtDesc(
+                donor.id(), Donation.Status.REMOVED, pageable);
+        return PageResponse.of(toResponses(page));
+    }
+
+    /**
+     * Takes a listing down. Only its donor may do this, and only while it is still available.
+     */
+    @Transactional
+    public void remove(String firebaseUid, UUID donationId) {
+        UserResponse caller = userService.requireActiveUser(firebaseUid);
+        Donation donation = donationRepository.findById(donationId)
+                .filter(found -> found.getStatus() != Donation.Status.REMOVED)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Donation not found"));
+        if (!donation.getDonorId().equals(caller.id())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the donor can remove this donation");
+        }
+        if (donation.getStatus() != Donation.Status.AVAILABLE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only an available donation can be removed");
+        }
+        donation.markRemoved();
+    }
+
+    /**
      * One donation. Removed donations are treated as not found.
      */
     @Transactional(readOnly = true)

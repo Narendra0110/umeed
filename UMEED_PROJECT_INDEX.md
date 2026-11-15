@@ -4,7 +4,7 @@ Version: 2.0
 
 Last updated: 2026-11-16
 
-Project status: BATCH B02 (POST AND BROWSE DONATIONS) WRITTEN, NOT YET VERIFIED – WAITING FOR THE ship RESULT
+Project status: BATCH B03 (NEARBY FEED, MY DONATIONS, REMOVE A LISTING) WRITTEN, NOT YET VERIFIED – WAITING FOR THE ship RESULT
 
 Project folder: H:\Project\Umeed
 
@@ -466,7 +466,7 @@ Done:
 * CreateDonationRequest and DonationResponse.
 * User lookups for other modules in UserService (requireActiveUser, displayNamesByIds).
 
-Written in batch B02, waiting for verification:
+Done in batch B02, verified by automated tests:
 
 * CategoryService.isActiveCategory.
 * DonationService: create a donation with photos, list the feed, view one donation.
@@ -653,7 +653,8 @@ From 2026-11-15 work is tracked by feature batch, not by file number.
 | Batch | Contents | Status |
 | ----- | -------- | ------ |
 | B01   | Workflow change: UMEED_MASTER_INSTRUCTIONS.md version 3.0, ship.cmd, first automated API tests (CategoryApiTests, SecurityRulesTests, UserApiTests), this index | COMPLETED |
-| B02   | Post and browse donations: CategoryService.isActiveCategory, DonationService, DonationController, FileController, PageResponse, upload limits, GlobalExceptionHandler additions, DonationApiTests | NEEDS REVIEW |
+| B02   | Post and browse donations: CategoryService.isActiveCategory, DonationService, DonationController, FileController, PageResponse, upload limits, GlobalExceptionHandler additions, DonationApiTests | COMPLETED |
+| B03   | Nearby-first feed, my donations, remove a listing: DonationRepository, Donation.markRemoved, DonationService, DonationController, 4 new tests in DonationApiTests | NEEDS REVIEW |
 
 Notes:
 
@@ -811,10 +812,13 @@ As of 2026-11-15, all verified by hand:
 | GET    | /api/v1/categories   | Public                | List of active categories (id, slug, name) |
 | GET    | /api/v1/users/me     | Firebase token needed | The caller's own profile. Creates the user on first call. |
 | PUT    | /api/v1/users/me     | Firebase token needed | Set the display name. Body: {"displayName": "..."} |
-| POST   | /api/v1/donations    | Firebase token needed | Post a donation. Multipart form: categoryId, title, description, itemCondition, city, area, latitude, longitude, pickupAddress, and 1 to 5 files named photos. Answers 201. (B02, not yet verified) |
-| GET    | /api/v1/donations    | Firebase token needed | The feed: available donations, newest first. Parameters page (default 0) and size (default 20, maximum 50). Answers items, page, size, totalItems, totalPages, hasNext. (B02, not yet verified) |
-| GET    | /api/v1/donations/{id} | Firebase token needed | One donation. 404 if unknown or removed. (B02, not yet verified) |
-| GET    | /api/v1/files/...    | Firebase token needed | A stored photo, at the address given in imageUrls. (B02, not yet verified) |
+| POST   | /api/v1/donations    | Firebase token needed | Post a donation. Multipart form: categoryId, title, description, itemCondition, city, area, latitude, longitude, pickupAddress, and 1 to 5 files named photos. Answers 201. |
+| GET    | /api/v1/donations    | Firebase token needed | The feed: available donations, newest first. Parameters page (default 0) and size (default 20, maximum 50). Answers items, page, size, totalItems, totalPages, hasNext. |
+| GET    | /api/v1/donations/{id} | Firebase token needed | One donation. 404 if unknown or removed. |
+| GET    | /api/v1/donations?lat=..&lng=.. | Firebase token needed | The feed sorted nearest first, then newest. Both lat and lng are needed. The caller's location is not stored. (B03, not yet verified) |
+| GET    | /api/v1/donations/mine | Firebase token needed | The caller's own donations in every status except removed. (B03, not yet verified) |
+| DELETE | /api/v1/donations/{id} | Firebase token needed | Remove a listing. Only the donor, only while AVAILABLE. Answers 204. The row is kept with status REMOVED. (B03, not yet verified) |
+| GET    | /api/v1/files/...    | Firebase token needed | A stored photo, at the address given in imageUrls. |
 
 * Every other address answers 401 without a valid token.
 * The token is sent in the header: Authorization: Bearer followed by the Firebase ID token.
@@ -873,11 +877,16 @@ Batch B02 notes:
 * Not covered by automated tests: the 5 MB limit enforced by the server itself (the test tool does not enforce upload limits), a real upload from a phone, and a real Firebase token on the new endpoints.
 * The tests store photos in a temporary folder (umeed-test-storage inside the system temp folder) and delete it after each test.
 
+Batch B02 result: shipped on 2026-11-15 (clock time on the PC). ship reported Tests run: 20, Failures: 0, Errors: 0, BUILD SUCCESS, committed and pushed as e11bf4e. It passed on the first run.
+
+Batch B03 was approved and written on 2026-11-16. No migration. Editing a listing was deliberately left out of the MVP: a donor removes the post and creates a new one. Photos of a removed listing are kept in storage for now.
+
 RESUME HERE – next steps, in order:
 
-1. The project owner runs from H:\Project\Umeed: ship "Add donations: post with photos, feed, details". Expected: Tests run: 20, Failures: 0, Errors: 0 and SHIPPED. If the build fails, show the error; B02 was written without being compiled, so a compile error or a failing test is possible and is fixed before anything else.
-2. After B02 passes, mark it COMPLETED and propose B03: nearby-first feed sorting (distance formula in SQL, caller sends latitude and longitude), my donations, edit and remove a listing.
-3. Later: claims; pickup with address and phone reveal; reports; then the mobile app.
+1. The project owner runs from H:\Project\Umeed: ship "Add nearby feed, my donations and remove listing". Expected: Tests run: 24, Failures: 0, Errors: 0 and SHIPPED. B03 was written without being compiled, so a failure on the first run is possible. The part most likely to need a fix is the distance query in DonationRepository (hand-written SQL).
+2. After B03 passes, mark it COMPLETED and propose B04, claims: a new migration (shown in full first), submit a claim, donor sees claims and accepts one, other claims are closed, the donation becomes RESERVED, with protection against two claims being accepted at once.
+3. Then B05, pickup: the pickup address and both phone numbers are revealed to the donor and the accepted receiver only; both sides confirm completion.
+4. Then reports, then the mobile app.
 
 How to get a Firebase ID token for testing (all in cmd; the Web API Key, the token and passwords must not be pasted to the AI):
 
