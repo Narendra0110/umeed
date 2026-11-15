@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 interface ClaimRepository extends JpaRepository<Claim, UUID> {
@@ -18,6 +19,8 @@ interface ClaimRepository extends JpaRepository<Claim, UUID> {
     List<Claim> findByDonationIdOrderByCreatedAtAsc(UUID donationId);
 
     Page<Claim> findByClaimantIdOrderByCreatedAtDesc(UUID claimantId, Pageable pageable);
+
+    Optional<Claim> findFirstByDonationIdAndStatus(UUID donationId, Claim.Status status);
 
     /**
      * Changes one claim's status only if it currently has the expected status.
@@ -38,6 +41,20 @@ interface ClaimRepository extends JpaRepository<Claim, UUID> {
     int changeStatusForDonation(
             @Param("donationId") UUID donationId,
             @Param("expected") Claim.Status expected,
+            @Param("newStatus") Claim.Status newStatus,
+            @Param("now") Instant now);
+
+    /**
+     * Like changeStatusForDonation, but only for claims whose last change happened at exactly the given moment.
+     * Used to reopen precisely the claims that were rejected by one particular acceptance.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update Claim c set c.status = :newStatus, c.updatedAt = :now "
+            + "where c.donationId = :donationId and c.status = :expected and c.updatedAt = :changedAt")
+    int changeStatusForDonationChangedAt(
+            @Param("donationId") UUID donationId,
+            @Param("expected") Claim.Status expected,
+            @Param("changedAt") Instant changedAt,
             @Param("newStatus") Claim.Status newStatus,
             @Param("now") Instant now);
 }

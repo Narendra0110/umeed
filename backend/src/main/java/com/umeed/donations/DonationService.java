@@ -206,6 +206,61 @@ public class DonationService {
     }
 
     /**
+     * PRIVATE pickup details. The caller must already have checked who is asking.
+     */
+    @Transactional(readOnly = true)
+    public DonationPickupDetails getPickupDetails(UUID donationId) {
+        return donationRepository.findById(donationId)
+                .filter(found -> found.getStatus() != Donation.Status.REMOVED)
+                .map(DonationPickupDetails::from)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Donation not found"));
+    }
+
+    /**
+     * PRIVATE pickup details, with the donation locked until the caller's transaction ends.
+     * Used before confirming or cancelling, so the check of who is asking stays true while the change is made.
+     */
+    @Transactional
+    public DonationPickupDetails lockForPickup(UUID donationId) {
+        return DonationPickupDetails.from(lockExisting(donationId));
+    }
+
+    /**
+     * One side confirms the handover. When both have confirmed, the donation becomes completed.
+     * Confirming twice, or after completion, changes nothing.
+     */
+    @Transactional
+    public DonationPickupDetails confirmHandover(UUID donationId, boolean byDonor) {
+        Donation donation = lockExisting(donationId);
+        if (donation.getStatus() == Donation.Status.COMPLETED) {
+            return DonationPickupDetails.from(donation);
+        }
+        if (donation.getStatus() != Donation.Status.RESERVED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This donation is not reserved");
+        }
+        donation.confirmHandover(byDonor);
+        return DonationPickupDetails.from(donation);
+    }
+
+    /**
+     * A reservation is cancelled: the donation goes back to the feed.
+     */
+    @Transactional
+    public void reopen(UUID donationId) {
+        Donation donation = lockExisting(donationId);
+        if (donation.getStatus() != Donation.Status.RESERVED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only a reserved donation can be cancelled");
+        }
+        donation.reopen();
+    }
+
+    private Donation lockExisting(UUID donationId) {
+        return donationRepository.findForUpdateById(donationId)
+                .filter(found -> found.getStatus() != Donation.Status.REMOVED)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Donation not found"));
+    }
+
+    /**
      * Titles for the given donation ids, including reserved, completed and removed ones.
      */
     @Transactional(readOnly = true)

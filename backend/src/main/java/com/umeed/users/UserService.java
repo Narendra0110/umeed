@@ -70,6 +70,19 @@ public class UserService {
         return names;
     }
 
+    /**
+     * PRIVATE contact details, including the phone number. The caller must already have checked
+     * that the person asking is allowed to see them.
+     */
+    @Transactional(readOnly = true)
+    public UserContact contactOf(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        String name = user.getDisplayName();
+        return new UserContact(
+                user.getId(), name != null && !name.isBlank() ? name : "Umeed user", user.getPhoneNumber());
+    }
+
     private UserResponse register(String firebaseUid, String phoneNumber) {
         try {
             return UserResponse.from(userRepository.saveAndFlush(User.register(firebaseUid, phoneNumber)));

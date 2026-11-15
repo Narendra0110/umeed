@@ -61,6 +61,12 @@ public class Donation {
     @Column(name = "pickup_address", nullable = false, length = 500)
     private String pickupAddress;
 
+    @Column(name = "donor_confirmed_at")
+    private Instant donorConfirmedAt;
+
+    @Column(name = "receiver_confirmed_at")
+    private Instant receiverConfirmedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -111,6 +117,27 @@ public class Donation {
         this.status = Status.RESERVED;
     }
 
+    /** One side confirms the handover. When both have confirmed, the donation is completed. */
+    void confirmHandover(boolean byDonor) {
+        Instant now = Instant.now();
+        if (byDonor && donorConfirmedAt == null) {
+            donorConfirmedAt = now;
+        }
+        if (!byDonor && receiverConfirmedAt == null) {
+            receiverConfirmedAt = now;
+        }
+        if (donorConfirmedAt != null && receiverConfirmedAt != null) {
+            status = Status.COMPLETED;
+        }
+    }
+
+    /** A reservation was cancelled. The item goes back to the feed and any confirmation is cleared. */
+    void reopen() {
+        status = Status.AVAILABLE;
+        donorConfirmedAt = null;
+        receiverConfirmedAt = null;
+    }
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();
@@ -135,6 +162,8 @@ public class Donation {
     public double getLatitude() { return latitude; }
     public double getLongitude() { return longitude; }
     public String getPickupAddress() { return pickupAddress; }
+    public Instant getDonorConfirmedAt() { return donorConfirmedAt; }
+    public Instant getReceiverConfirmedAt() { return receiverConfirmedAt; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 }

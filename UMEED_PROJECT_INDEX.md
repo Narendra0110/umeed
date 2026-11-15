@@ -4,7 +4,7 @@ Version: 2.0
 
 Last updated: 2026-11-16
 
-Project status: BATCH B04 (CLAIMS) WRITTEN, NOT YET VERIFIED – WAITING FOR THE ship RESULT
+Project status: BATCH B05 (PICKUP) WRITTEN, NOT YET VERIFIED – WAITING FOR THE ship RESULT
 
 Project folder: H:\Project\Umeed
 
@@ -152,11 +152,20 @@ Decided: 2026-11-16
 * There is no limit on how many open claims one person can have.
 * Any number of people can claim the same item until the donor accepts one claim.
 * When the donor accepts a claim: that claim becomes ACCEPTED, every other pending claim on the item becomes REJECTED, and the item's status becomes RESERVED. A reserved item leaves the feed. It is still listed under the donor's "my donations" and the claimants' "my claims", where the app can show it in its own section by status.
-* The project owner's words were that after acceptance the item "will be added under other category". The AI understood this as the status-based section described above, not as a change of the item's product category (Clothes, Books and so on). To be confirmed.
+* The project owner's words were that after acceptance the item "will be added under other category". Confirmed by the project owner on 2026-11-16: this means the status-based section described above (for example a "Reserved" list in the app), not a change of the item's product category.
 * A person can claim a given item once. Withdrawing a pending claim is final for that item in the MVP (AI suggestion; the project owner did not object).
 * A donor cannot claim their own item. Only AVAILABLE items can be claimed. The claimant needs a completed profile.
 * The donor sees claimants' names and messages only. Phone numbers and the pickup address are revealed in the pickup batch (B05).
 * When a donor removes a listing, its pending claims are rejected automatically.
+
+## Pickup decisions
+
+Decided: 2026-11-16
+
+* After a claim is accepted, the donor and the accepted receiver, and nobody else, can read the pickup address and each other's name and phone number. This is the only response in the API with an address or another person's phone number.
+* Each side confirms the handover separately. When both have confirmed, the donation becomes COMPLETED. The database refuses COMPLETED without both confirmations.
+* Cancelling a reservation is part of the MVP (AI recommendation; the project owner approved the batch without objecting). The donor or the accepted receiver can cancel while the item is RESERVED. The item returns to AVAILABLE and to the feed, and any confirmation is cleared. The claims that were rejected by that acceptance become PENDING again. The cancelled claim is closed: WITHDRAWN if the receiver cancelled, REJECTED if the donor did, and that person cannot claim the same item again.
+* Pickup time scheduling (propose, accept, reschedule) is not in the MVP. The two sides arrange the time by phone.
 
 ---
 
@@ -668,7 +677,8 @@ From 2026-11-15 work is tracked by feature batch, not by file number.
 | B01   | Workflow change: UMEED_MASTER_INSTRUCTIONS.md version 3.0, ship.cmd, first automated API tests (CategoryApiTests, SecurityRulesTests, UserApiTests), this index | COMPLETED |
 | B02   | Post and browse donations: CategoryService.isActiveCategory, DonationService, DonationController, FileController, PageResponse, upload limits, GlobalExceptionHandler additions, DonationApiTests | COMPLETED |
 | B03   | Nearby-first feed, my donations, remove a listing: DonationRepository, Donation.markRemoved, DonationService, DonationController, 4 new tests in DonationApiTests | COMPLETED |
-| B04   | Claims: V6__create_claims.sql; claims module (Claim, ClaimRepository, CreateClaimRequest, ClaimResponse, ClaimService, ClaimController); donations additions (DonationSummary, DonationRemovedEvent, row locks, reserve, markReserved); ClaimApiTests | NEEDS REVIEW |
+| B04   | Claims: V6__create_claims.sql; claims module (Claim, ClaimRepository, CreateClaimRequest, ClaimResponse, ClaimService, ClaimController); donations additions (DonationSummary, DonationRemovedEvent, row locks, reserve, markReserved); ClaimApiTests | COMPLETED |
+| B05   | Pickup: V7__add_handover_confirmation.sql; pickup module (PickupResponse, PickupService, PickupController); additions to Donation, DonationService, DonationPickupDetails, ClaimRepository, ClaimService, UserService, UserContact; PickupApiTests | NEEDS REVIEW |
 
 Notes:
 
@@ -832,11 +842,14 @@ As of 2026-11-15, all verified by hand:
 | GET    | /api/v1/donations?lat=..&lng=.. | Firebase token needed | The feed sorted nearest first, then newest. Both lat and lng are needed. The caller's location is not stored. |
 | GET    | /api/v1/donations/mine | Firebase token needed | The caller's own donations in every status except removed. |
 | DELETE | /api/v1/donations/{id} | Firebase token needed | Remove a listing. Only the donor, only while AVAILABLE. Answers 204. The row is kept with status REMOVED. |
-| POST   | /api/v1/donations/{id}/claims | Firebase token needed | Claim an item. Optional body {"message": "..."} up to 300 characters. Answers 201. (B04, not yet verified) |
-| GET    | /api/v1/donations/{id}/claims | Firebase token needed | Donor only: all claims on the item, oldest first, with claimant names. (B04, not yet verified) |
-| POST   | /api/v1/claims/{id}/accept | Firebase token needed | Donor only: accept one claim. Rejects the others and reserves the item. (B04, not yet verified) |
-| POST   | /api/v1/claims/{id}/withdraw | Firebase token needed | Claimant only: withdraw a pending claim. (B04, not yet verified) |
-| GET    | /api/v1/claims/mine  | Firebase token needed | The caller's own claims, newest first, paged. (B04, not yet verified) |
+| POST   | /api/v1/donations/{id}/claims | Firebase token needed | Claim an item. Optional body {"message": "..."} up to 300 characters. Answers 201. |
+| GET    | /api/v1/donations/{id}/claims | Firebase token needed | Donor only: all claims on the item, oldest first, with claimant names. |
+| POST   | /api/v1/claims/{id}/accept | Firebase token needed | Donor only: accept one claim. Rejects the others and reserves the item. |
+| POST   | /api/v1/claims/{id}/withdraw | Firebase token needed | Claimant only: withdraw a pending claim. |
+| GET    | /api/v1/claims/mine  | Firebase token needed | The caller's own claims, newest first, paged. |
+| GET    | /api/v1/donations/{id}/pickup | Firebase token needed | PRIVATE. Donor and accepted receiver only: pickup address, both names and phone numbers, who has confirmed. (B05, not yet verified) |
+| POST   | /api/v1/donations/{id}/pickup/confirm | Firebase token needed | Donor or accepted receiver confirms the handover. Both confirmations complete the donation. (B05, not yet verified) |
+| POST   | /api/v1/donations/{id}/pickup/cancel | Firebase token needed | Donor or accepted receiver cancels the reservation. Answers 204. (B05, not yet verified) |
 | GET    | /api/v1/files/...    | Firebase token needed | A stored photo, at the address given in imageUrls. |
 
 * Every other address answers 401 without a valid token.
@@ -909,14 +922,18 @@ Batch B04 was approved on 2026-11-16 (the migration was shown in full first) and
 * Submitting a claim takes a shared lock on the donation, so a claim cannot slip in while the donor is accepting another one.
 * Modules stay separate: claims talk to donations only through DonationService (getSummary, lockClaimable, reserve, titlesByIds) and react to DonationRemovedEvent.
 * Not covered by automated tests: true simultaneous requests from two users (the tests run one request at a time).
-* V6 has not run yet. Once ship succeeds it must never be edited.
+* V6 has run (applied by the B04 ship run). It must never be edited.
+
+Batch B04 result: ship reported Tests run: 30, Failures: 0, Errors: 0, BUILD SUCCESS, committed and pushed as 793487a. It passed on the first run.
+
+Batch B05 was approved on 2026-11-16 (the private response and the migration were shown in full first) and written. V7 is exactly the migration that was shown. New module: com.umeed.pickup, which uses the donations, claims and users services and has no table of its own.
 
 RESUME HERE – next steps, in order:
 
-1. The project owner runs from H:\Project\Umeed: ship "Add claims: submit, accept, withdraw". Expected: Tests run: 30, Failures: 0, Errors: 0 and SHIPPED. B04 was written without being compiled, so a failure on the first run is possible.
-2. Confirm with the project owner what "added under other category" means (see "Claim decisions" in section 2A).
-3. After B04 passes, mark it COMPLETED and propose B05, pickup: the pickup address and both phone numbers are revealed to the donor and the accepted receiver only; both sides confirm completion; the donation becomes COMPLETED. Anything revealing private data is shown in full before it is written.
-4. Then reports, then the mobile app.
+1. The project owner runs from H:\Project\Umeed: ship "Add pickup: private details, confirm handover, cancel reservation". Expected: Tests run: 35, Failures: 0, Errors: 0 and SHIPPED. B05 was written without being compiled, so a failure on the first run is possible. Once it succeeds, V7 must never be edited.
+2. After B05 passes, mark it COMPLETED. The backend then covers the whole MVP flow: login, profile, post, feed, claim, accept, pickup, complete.
+3. Propose B06: report a listing (the last backend item in the MVP scope), stored for review in the database.
+4. Then the mobile app (Expo, React Native). Before it: the project owner should run one end-to-end check of the new endpoints with a real Firebase token, since all verification since B01 has been by automated tests with a simulated token.
 
 How to get a Firebase ID token for testing (all in cmd; the Web API Key, the token and passwords must not be pasted to the AI):
 
@@ -942,6 +959,8 @@ Open points:
 * There are no automated tests for the categories or users modules yet. Only the generated context-load test exists. All verification so far is by hand.
 * UMEED_DB_PASSWORD must be set again in every new command window before running the backend.
 * Whether the GitHub repository is Private was not confirmed to the AI.
+* Design shortcut in claims: when a reservation is cancelled, the claims to reopen are found by their timestamp, because accepting a claim stamps the accepted claim and the claims it rejects with the same moment. It avoids a new status and a new column, and a test covers it, but a dedicated column would be more explicit. Consider when the claims table next needs a migration.
+* A completed donation's pickup details stay readable by the two parties. Consider hiding them after some time.
 * Not verified: Firebase SMS pricing and whether a billing plan upgrade is needed before real SMS can be sent.
 * A name such as " A " passes the 2 character check and is stored as "A" after trimming. Accepted as harmless for now.
 

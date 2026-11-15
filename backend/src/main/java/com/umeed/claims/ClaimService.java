@@ -19,6 +19,7 @@ import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -140,6 +141,41 @@ public class ClaimService {
         String name = caller.displayName() != null ? caller.displayName() : UNKNOWN_NAME;
         return PageResponse.of(page.map(claim ->
                 ClaimResponse.from(claim, titles.getOrDefault(claim.getDonationId(), ""), name)));
+    }
+
+    // ----- For the pickup module -----
+
+    /**
+     * The user whose claim on this donation is accepted, if any.
+     */
+    @Transactional(readOnly = true)
+    public Optional<UUID> acceptedClaimantId(UUID donationId) {
+        return claimRepository.findFirstByDonationIdAndStatus(donationId, Claim.Status.ACCEPTED)
+                .map(Claim::getClaimantId);
+    }
+
+    /**
+     * A reservation is cancelled. The claims that were rejected by that acceptance become pending again,
+     * so the donor can pick someone else. The cancelled claim is closed: withdrawn if the receiver cancelled,
+     * rejected if the donor did. A claim closed this way is not reopened by a later cancellation.
+     */
+    @Transactional
+    public void cancelAccepted(UUID donationId, boolean byReceiver) {
+        Claim accepted = claimRepository.findFirstByDonationIdAndStatus(donationId, Claim.Status.ACCEPTED)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.CONFLICT, "No claim has been accepted for this donation"));
+        UUID acceptedId = accepted.getId();
+        // accept() stamps the accepted claim and the claims it rejects with the same moment.
+        Instant acceptedAt = accepted.getUpdatedAt();
+        Instant now = Instant.now();
+
+        claimRepository.changeStatusForDonationChangedAt(
+                donationId, Claim.Status.REJECTED, acceptedAt, Claim.Status.PENDING, now);
+        claimRepository.changeStatus(
+                acceptedId,
+                Claim.Status.ACCEPTED,
+                byReceiver ? Claim.Status.WITHDRAWN : Claim.Status.REJECTED,
+                now);
     }
 
     /**
