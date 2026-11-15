@@ -2,9 +2,9 @@
 
 Version: 2.0
 
-Last updated: 2026-11-14
+Last updated: 2026-11-15
 
-Project status: LOGIN BACKEND BUILT (SECURITY CONFIG, USERS MODULE, GET /api/v1/users/me) – NEXT IS TO FINISH THE TEST WITH A REAL FIREBASE TOKEN
+Project status: LOGIN AND PROFILE SETUP WORKING AND VERIFIED WITH A REAL FIREBASE TOKEN – NEXT IS GLOBAL ERROR HANDLING, THEN DONATIONS
 
 Project folder: H:\Project\Umeed
 
@@ -417,13 +417,14 @@ Done:
 * Spring Security with OAuth2 resource server, verifying Firebase ID tokens for project umeed-2e018 (issuer and audience checked).
 * Security rules: GET /api/v1/categories and /actuator/health are public. Everything else needs a valid token. Stateless, CSRF off.
 * Users module: entity, repository, response, service (find or register from a verified token), GET /api/v1/users/me.
+* End-to-end test with a real Firebase ID token passed on 2026-11-15.
+* Profile setup: PUT /api/v1/users/me sets the display name, with validation. Suspended and deleted accounts are refused with 403.
 
 Not done yet:
 
-* End-to-end test with a real Firebase ID token (see section 12).
-* Profile setup: setting the display name.
-* Account status enforcement for suspended users.
-* Logout needs no backend work (the app discards its token). Account deletion is still to build.
+* Account status enforcement for suspended users in the other modules (listings, claims), as those are built.
+* Account deletion.
+* Logout needs no backend work (the app discards its token).
 
 Tasks:
 
@@ -589,8 +590,13 @@ No hand-written application code files have been created yet. The entries below 
 | 025    | backend/src/main/java/com/umeed/users/UserRepository.java | COMPLETED |
 | 026    | backend/src/main/java/com/umeed/users/UserResponse.java | COMPLETED |
 | 027    | backend/src/main/java/com/umeed/users/UserService.java | COMPLETED |
-| 028    | backend/src/main/java/com/umeed/users/UserController.java | NEEDS REVIEW |
+| 028    | backend/src/main/java/com/umeed/users/UserController.java | COMPLETED |
 | 029    | UMEED_PROJECT_INDEX.md (end of session save) | COMPLETED |
+| 030    | backend/src/main/java/com/umeed/users/User.java (changeDisplayName) | COMPLETED |
+| 031    | backend/src/main/java/com/umeed/users/UpdateProfileRequest.java | COMPLETED |
+| 032    | backend/src/main/java/com/umeed/users/UserService.java (updateDisplayName) | COMPLETED |
+| 033    | backend/src/main/java/com/umeed/users/UserController.java (PUT /me) | COMPLETED |
+| 034    | UMEED_PROJECT_INDEX.md (progress update) | COMPLETED |
 
 Notes:
 
@@ -620,7 +626,11 @@ Notes:
 * 022 added umeed.firebase.project-id (default umeed-2e018, override with UMEED_FIREBASE_PROJECT_ID), the JWT issuer-uri https://securetoken.google.com/{project id} and the JWT audience. Verification of 020 and 022: mvnw.cmd test showed BUILD SUCCESS on 2026-11-14.
 * 023 is the security configuration in package com.umeed.auth. Verification: the project owner reported that the categories endpoint and the health endpoint worked in the browser after this file. The 401 for an unknown protected address was taken as included in that report but no screenshot was shown.
 * 024 is the User entity with nested Role and Status enums, a package-private register(firebaseUid, phoneNumber) factory, automatic timestamps, and no setters yet. 025 is the package-private repository with findByFirebaseUid. 026 is the public response record for a user's own profile (id, phoneNumber, displayName, profileComplete, role, status). It contains the phone number, so it must only be returned to the user it belongs to. 027 is the public service with findOrRegister, which handles two simultaneous first requests. Verification of 024 to 027: mvnw.cmd test showed BUILD SUCCESS after each file on 2026-11-14 (027 reported by the project owner, the others shown).
-* 028 is the package-private controller for GET /api/v1/users/me. It takes the Firebase UID from the token subject and the phone number from the phone_number claim, and answers 403 if the token has no phone number. It builds and the application runs. Status NEEDS REVIEW until the test with a real Firebase token in section 12 is completed. Whether the address answered 401 without a token was asked but not confirmed.
+* 028 is the package-private controller for GET /api/v1/users/me. It takes the Firebase UID from the token subject and the phone number from the phone_number claim, and answers 403 if the token has no phone number. Verified on 2026-11-15 with a real Firebase ID token for the test phone number: HTTP 200, role USER, status ACTIVE, displayName null, profileComplete false, and the same id on a second call, so the user is created once and then found. The psql check of the users row was not completed (password mistyped at the prompt); the identical id on the second call already shows the row was saved. A request without a token answering 401 was not shown to the AI.
+* 030 added the package-private changeDisplayName method to User (strips leading and trailing spaces). 031 is the package-private request record with displayName, required, 2 to 80 characters. 032 added the public, transactional updateDisplayName to UserService: looks the user up by the verified Firebase UID, answers 404 if not found and 403 if the account is not ACTIVE. 033 added PUT /api/v1/users/me with @Valid.
+* Verification of 030 to 033 on 2026-11-15 with a real token: PUT with "Narendra" returned 200 with displayName Narendra and profileComplete true; PUT with an empty name returned 400; a following GET returned 200 and still showed Narendra.
+* Known issue found in that test: the 400 body is Spring's generic one (timestamp, status, error, path) and does not include the validation message. To be fixed by global error handling.
+* 034 is the update of this file that recorded 028 and 030 to 033.
 * 029 is the end of session save of this file. The project owner said the session would continue tomorrow; the AI saved the index following the two earlier end of session saves.
 * Known gap in 027: if a phone number already belongs to a user but arrives with a different Firebase UID, the request fails with a server error. To be handled with global exception handling.
 * 019 is the end of session save of this file, requested by the project owner on 2026-11-12.
@@ -643,7 +653,8 @@ Git commits:
 * dccba50 – Add categories module with GET /api/v1/categories.
 * All commits were pushed to GitHub on 2026-11-12. The AI did not see whether the 017 index update was committed before that push. If git status shows UMEED_PROJECT_INDEX.md as modified, it is covered by the 019 commit.
 * Commits seen on 2026-11-14, all pushed to origin/main: 5dab79f (Configure Firebase ID token verification), 0c81fed (Add User entity), 0c3377e (Add UserRepository), bb7c82f (Add UserService), 21c77dc (Add GET /api/v1/users/me). Other commits in between (V3 migration, Spring Security pom change, SecurityConfig, UserResponse, index saves) were made by the project owner but their hashes were not all shown.
-* The 029 update of this index is NOT committed or pushed yet.
+* The AI did not see the commits for 030 to 033 or for the 029 index save. The project owner was given the commands.
+* The 034 update of this index is NOT committed or pushed yet.
 
 Allowed statuses:
 
@@ -726,6 +737,22 @@ First hand-written code file:
 
 ---
 
+# 10. WORKING API ENDPOINTS
+
+As of 2026-11-15, all verified by hand:
+
+| Method | Address              | Access                | Purpose |
+| ------ | -------------------- | --------------------- | ------- |
+| GET    | /actuator/health     | Public                | Health check |
+| GET    | /api/v1/categories   | Public                | List of active categories (id, slug, name) |
+| GET    | /api/v1/users/me     | Firebase token needed | The caller's own profile. Creates the user on first call. |
+| PUT    | /api/v1/users/me     | Firebase token needed | Set the display name. Body: {"displayName": "..."} |
+
+* Every other address answers 401 without a valid token.
+* The token is sent in the header: Authorization: Bearer followed by the Firebase ID token.
+
+---
+
 # 10A. AUTHENTICATION DESIGN
 
 Decided: 2026-11-12
@@ -761,27 +788,21 @@ Do not block unrelated development on decisions that can safely be deferred.
 
 # 12. LAST SESSION SUMMARY
 
-Date: 2026-11-14
+Date: 2026-11-15
 
 Completed:
 
-* Verified and committed the users table (018).
-* Added Spring Security and Firebase token settings (020, 022).
-* Added the security configuration (023).
-* Built the users module (024 to 028), including GET /api/v1/users/me.
-* Set the Firebase SMS region policy to allow India and confirmed the test phone number works through the REST API.
-* Updated this index (029).
+* Finished the real token test: GET /api/v1/users/me works end to end (028).
+* Built and verified profile setup: PUT /api/v1/users/me (030 to 033).
+* Updated this index (034).
 
 RESUME HERE – next steps, in order, each needing approval:
 
-1. Commit and push the 029 index update: git add UMEED_PROJECT_INDEX.md, git commit -m "Update project index: login backend, resume point", git push.
-2. Finish the real token test for GET /api/v1/users/me. The commands are below. Show the AI the output of steps C and D.
-3. If the test passes, mark 028 COMPLETED. If it fails, show the error before changing anything.
-4. Next feature, one approved file at a time: profile setup (set the display name), for example PUT /api/v1/users/me.
-5. Global exception handling with a consistent error response format in com.umeed.common.
-6. Then Phase 4, donations.
+1. Commit and push the 034 index update: git add UMEED_PROJECT_INDEX.md, git commit -m "Update project index: login and profile setup verified", git push.
+2. Global error handling in package com.umeed.common: one consistent JSON error shape for every error, including the validation messages. Two or three small files, one at a time. Retest PUT /api/v1/users/me with an empty name and expect the message "Display name is required" in the body.
+3. Then Phase 4, donations. Decisions needed before the first donations file: the item condition values, how photos are stored during development (object storage provider is an outstanding decision), and whether PostGIS is installed for nearby discovery.
 
-Real token test (all in cmd; the Web API Key, the token and passwords must not be pasted to the AI):
+How to get a Firebase ID token for testing (all in cmd; the Web API Key, the token and passwords must not be pasted to the AI):
 
 * A. Second window, start the backend: cd /d H:\Project\Umeed\backend, set UMEED_DB_PASSWORD=..., cls, mvnw.cmd spring-boot:run. Wait for "Started BackendApplication". Internet is needed.
 * B. First window, get a token:
@@ -794,20 +815,31 @@ Real token test (all in cmd; the Web API Key, the token and passwords must not b
   * curl -s -X POST "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPhoneNumber?key=%FB_KEY%" -H "Content-Type: application/json" -d "{\"sessionInfo\":\"%FB_SESSION%\",\"code\":\"%FB_CODE%\"}" -o "%TEMP%\fb_token.json"
   * for /f "delims=" %i in ('powershell -NoProfile -Command "(Get-Content $env:TEMP\fb_token.json | ConvertFrom-Json).idToken"') do set FB_TOKEN=%i
   * echo %FB_TOKEN:~0,10%   (expect eyJhbGciOi)
-* C. Call the backend: curl -s -i http://localhost:8080/api/v1/users/me -H "Authorization: Bearer %FB_TOKEN%". Expect HTTP/1.1 200 and JSON with id, phoneNumber, displayName null, profileComplete false, role USER, status ACTIVE. Run it twice and check the id is the same.
-* D. Check the database and clean up: "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U umeed_app -d umeed_dev -c "SELECT id, phone_number, role, status, created_at FROM users;" then del "%TEMP%\fb_token.json". Expect exactly one row.
+* C. Use it: curl -s -i http://localhost:8080/api/v1/users/me -H "Authorization: Bearer %FB_TOKEN%". A token lasts about one hour. Afterwards: del "%TEMP%\fb_token.json".
 
 Open points:
 
-* The project owner has not granted a standing approval for index-only updates. Index saves 019, 021 and 029 were made at the end of sessions.
+* The project owner has not granted a standing approval for index-only updates.
 * The AI's shell on the PC cannot start because of low disk space on the PC, so commands are run by the project owner and pasted back.
 * The AI's own environment cannot reach Maven Central, so it cannot check dependency names or versions itself.
 * When the AI rewrites a file and transfers it immediately, the transfer can pick up the previous version. The AI waits before transferring and checks the file size on disk after every write.
 * PostGIS has not been installed or checked yet.
-* There are no automated tests for the categories or users modules yet. Only the generated context-load test exists.
+* There are no automated tests for the categories or users modules yet. Only the generated context-load test exists. All verification so far is by hand.
 * UMEED_DB_PASSWORD must be set again in every new command window before running the backend.
 * Whether the GitHub repository is Private was not confirmed to the AI.
 * Not verified: Firebase SMS pricing and whether a billing plan upgrade is needed before real SMS can be sent.
+* A name such as " A " passes the 2 character check and is stored as "A" after trimming. Accepted as harmless for now.
+
+Earlier session, 2026-11-14:
+
+Completed:
+
+* Verified and committed the users table (018).
+* Added Spring Security and Firebase token settings (020, 022).
+* Added the security configuration (023).
+* Built the users module (024 to 028), including GET /api/v1/users/me.
+* Set the Firebase SMS region policy to allow India and confirmed the test phone number works through the REST API.
+* Updated this index (029).
 
 Earlier session, 2026-11-13:
 
