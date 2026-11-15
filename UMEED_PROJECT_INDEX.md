@@ -4,7 +4,7 @@ Version: 2.0
 
 Last updated: 2026-11-15
 
-Project status: LOGIN, PROFILE SETUP AND ERROR HANDLING WORKING – DONATIONS MODULE HALF BUILT – WORKFLOW CHANGED TO FEATURE BATCHES ON 2026-11-15
+Project status: BATCH B01 SHIPPED (11 TESTS PASS) – BATCH B02 (POST AND BROWSE DONATIONS) IS APPROVED BUT NOT WRITTEN YET
 
 Project folder: H:\Project\Umeed
 
@@ -143,6 +143,7 @@ Decided: 2026-11-15
 * Location: each donation stores city, area and approximate latitude and longitude as plain numbers. Coordinates are rounded to two decimals (about one kilometre) before saving. PostGIS is deferred until after the MVP. This is an agreed exception to the technology stack.
 * The public donation response never contains the pickup address or the donor phone number.
 * A donor must have completed their profile (display name set) before posting.
+* Login first, decided on 2026-11-15: the feed, a single donation and photos are visible only to logged-in users. Nothing about donations is public. Only GET /api/v1/categories and /actuator/health stay public.
 
 ---
 
@@ -639,15 +640,16 @@ No hand-written application code files have been created yet. The entries below 
 | 042    | backend/src/main/java/com/umeed/donations/DonationImageRepository.java | COMPLETED |
 | 043    | backend/src/main/java/com/umeed/storage/FileStorage.java | COMPLETED |
 | 044    | backend/src/main/java/com/umeed/storage/LocalFileStorage.java | COMPLETED |
-| 045    | backend/src/main/java/com/umeed/donations/CreateDonationRequest.java | NEEDS REVIEW |
-| 046    | backend/src/main/java/com/umeed/donations/DonationResponse.java | NEEDS REVIEW |
-| 047    | backend/src/main/java/com/umeed/users/UserService.java (requireActiveUser, displayNamesByIds) | NEEDS REVIEW |
+| 045    | backend/src/main/java/com/umeed/donations/CreateDonationRequest.java | COMPLETED |
+| 046    | backend/src/main/java/com/umeed/donations/DonationResponse.java | COMPLETED |
+| 047    | backend/src/main/java/com/umeed/users/UserService.java (requireActiveUser, displayNamesByIds) | COMPLETED |
 
 From 2026-11-15 work is tracked by feature batch, not by file number.
 
 | Batch | Contents | Status |
 | ----- | -------- | ------ |
-| B01   | Workflow change: UMEED_MASTER_INSTRUCTIONS.md version 3.0, ship.cmd, first automated API tests (CategoryApiTests, SecurityRulesTests, UserApiTests), this index | NEEDS REVIEW |
+| B01   | Workflow change: UMEED_MASTER_INSTRUCTIONS.md version 3.0, ship.cmd, first automated API tests (CategoryApiTests, SecurityRulesTests, UserApiTests), this index | COMPLETED |
+| B02   | Post and browse donations (see section 12 for the approved plan) | APPROVED, NOT WRITTEN |
 
 Notes:
 
@@ -685,8 +687,8 @@ Notes:
 * 035 is the common error shape (timestamp, status, error, message, path, fieldErrors). 036 is the handler that produces it for validation errors, unreadable bodies, deliberate errors, access denied, Spring's standard errors and unexpected errors (500 with a generic message, cause logged only). Verified on 2026-11-15 with a real token: empty name gives 400 with both displayName messages; broken body gives 400; valid name gives 200; unknown address gives 404 in the new shape. A request without a token is refused by Spring Security before any controller, so that 401 has an empty body.
 * 037 and 038 verified on 2026-11-15 with psql: donations has fourteen columns, four indexes, four check constraints and two foreign keys; donation_images has five columns, two unique constraints, the 0 to 4 check and one foreign key; flyway_schema_history shows versions 1 to 5 successful. Both have run and must never be edited.
 * 039 to 042 verified by BUILD SUCCESS on 2026-11-15 (entities match their tables, repository method names valid). 043 and 044 verified by BUILD SUCCESS (compile and Spring wiring only; saving a real file is not tested yet).
-* 045, 046 and 047 were written on 2026-11-15 and the build result after them was not shown to the AI. They are covered by the next ship run.
-* Batch B01: the test classes use MockMvc with Spring Security's simulated verified token, so no real Firebase token is needed. UserApiTests runs in a rolled-back transaction against the development database. One uncertainty: the tests need the spring-security-test library, which the AI expects to come with the existing security test starter but could not confirm. If the build reports missing classes from org.springframework.security.test, one dependency is added to pom.xml.
+* 045, 046 and 047 are verified by the B01 ship run (they compile and the application starts with them).
+* Batch B01: the test classes use MockMvc with Spring Security's simulated verified token, so no real Firebase token is needed. UserApiTests runs in a rolled-back transaction against the development database. Verified on 2026-11-15: ship reported Tests run: 11, Failures: 0, Errors: 0, BUILD SUCCESS, then committed and pushed as 4664d77. The spring-security-test library is available through the existing test starter.
 * 029 is the end of session save of this file. The project owner said the session would continue tomorrow; the AI saved the index following the two earlier end of session saves.
 * Known gap in 027: if a phone number already belongs to a user but arrives with a different Firebase UID, the request fails with a server error. To be handled with global exception handling.
 * 019 is the end of session save of this file, requested by the project owner on 2026-11-12.
@@ -711,7 +713,8 @@ Git commits:
 * Commits seen on 2026-11-14, all pushed to origin/main: 5dab79f (Configure Firebase ID token verification), 0c81fed (Add User entity), 0c3377e (Add UserRepository), bb7c82f (Add UserService), 21c77dc (Add GET /api/v1/users/me). Other commits in between (V3 migration, Spring Security pom change, SecurityConfig, UserResponse, index saves) were made by the project owner but their hashes were not all shown.
 * The AI did not see the commits for 030 to 033 or for the 029 index save. The project owner was given the commands.
 * Commits seen on 2026-11-15, pushed: 2172d80 (donations migrations, entities and repositories), df68a95 (FileStorage interface and local folder implementation). Earlier commits of that day were made by the project owner without all hashes being shown.
-* Batch B01 and files 045 to 047 are NOT committed yet as far as the AI has seen. They are committed by the first ship run.
+* 4664d77 – Switch to feature batches: ship script, API tests, master instructions 3.0 (pushed). It followed 3f7cca9.
+* The index update that records the B01 result and the B02 plan is NOT committed yet. The next ship run commits it.
 
 Allowed statuses:
 
@@ -858,10 +861,21 @@ Completed:
 
 RESUME HERE – next steps, in order:
 
-1. One-time setup by the project owner: setx UMEED_DB_PASSWORD with the umeed_app password, then open a new command window.
-2. From H:\Project\Umeed run: ship "Switch to feature batches: ship script, API tests, master instructions 3.0". Report the last lines of the output. If the build fails, show the error.
-3. Next batch, B02, donations part 2 (needs APPROVE): CategoryService.isActiveCategory; DonationService (create with photos, feed, view one); DonationController; photo serving endpoint; upload limits in application.properties; SecurityConfig rule making the feed, a single donation and photos readable without login (to be confirmed with the project owner); automated tests.
-4. Later batches: nearby-first feed sorting; my donations, edit and remove; claims; pickup with address and phone reveal; reports; then the mobile app.
+1. Write batch B02. The project owner already replied APPROVE on 2026-11-15, with the choice "login first". The session ended before any B02 file was written, because the project owner's usage limit was almost reached. No new approval is needed for the plan below, but confirm briefly before writing.
+2. The project owner runs: ship "Add donations: post with photos, feed, details".
+3. Then propose B03: nearby-first feed sorting, my donations, edit and remove a listing.
+4. Later: claims; pickup with address and phone reveal; reports; then the mobile app.
+
+Approved plan for batch B02 (no new migration):
+
+* CategoryService: add public boolean isActiveCategory(UUID categoryId), read-only transaction, using categoryRepository.findById(id).map(Category::isActive).orElse(false). Needs import java.util.UUID.
+* DonationService (new, public, package com.umeed.donations): create(firebaseUid, CreateDonationRequest, photos) – calls UserService.requireActiveUser, refuses with 403 if the profile is not complete, refuses with 400 if the category is not active, checks 1 to 5 photos, each JPEG, PNG or WebP and at most 5 MB, saves the Donation, stores each photo through FileStorage under a key like donations/{year}/{month}/{random uuid}.{ext}, saves DonationImage rows with sort_order 0 to 4, and deletes already stored files if anything fails. listFeed(pageable) – AVAILABLE donations, newest first, with donor names from UserService.displayNamesByIds and photos from findByDonationIdInOrderByDonationIdAscSortOrderAsc in one query. getOne(id) – 404 if not found or REMOVED.
+* DonationController (new, package-private): POST /api/v1/donations as multipart form (fields bound to CreateDonationRequest with @Valid, files in the part named photos), answers 201; GET /api/v1/donations with page and size (default size 20, maximum 50); GET /api/v1/donations/{id}.
+* FileController (new, package com.umeed.storage): GET /api/v1/files/** streams a stored photo with the right content type and a cache header; 404 if missing or the key is invalid.
+* application.properties: spring.servlet.multipart.max-file-size=5MB and spring.servlet.multipart.max-request-size=26MB.
+* SecurityConfig: no change needed, because login first means every new address needs a token and that is already the default rule. Add tests proving the new addresses answer 401 without a token.
+* GlobalExceptionHandler: add a handler so an upload that is too large answers 413 in the common error shape.
+* DonationApiTests (new): post with photos succeeds and appears in the feed and by id; the response has no pickup address; missing photos, a wrong file type, an unknown category and an incomplete profile are refused; requests without a token answer 401. Tests run in a rolled-back transaction and must delete any files they store.
 
 How to get a Firebase ID token for testing (all in cmd; the Web API Key, the token and passwords must not be pasted to the AI):
 
