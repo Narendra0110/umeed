@@ -4,7 +4,7 @@ Version: 2.0
 
 Last updated: 2026-11-17
 
-Project status: BATCH B06 (REPORT A LISTING) WRITTEN, NOT YET VERIFIED – WAITING FOR THE ship RESULT. AFTER IT THE MVP BACKEND IS COMPLETE.
+Project status: MVP BACKEND COMPLETE AND VERIFIED END TO END WITH REAL FIREBASE TOKENS – NEXT IS THE MOBILE APP (BATCH M01 PROPOSED, NOT APPROVED)
 
 Project folder: H:\Project\Umeed
 
@@ -689,7 +689,8 @@ From 2026-11-15 work is tracked by feature batch, not by file number.
 | B03   | Nearby-first feed, my donations, remove a listing: DonationRepository, Donation.markRemoved, DonationService, DonationController, 4 new tests in DonationApiTests | COMPLETED |
 | B04   | Claims: V6__create_claims.sql; claims module (Claim, ClaimRepository, CreateClaimRequest, ClaimResponse, ClaimService, ClaimController); donations additions (DonationSummary, DonationRemovedEvent, row locks, reserve, markReserved); ClaimApiTests | COMPLETED |
 | B05   | Pickup: V7__add_handover_confirmation.sql; pickup module (PickupResponse, PickupService, PickupController); additions to Donation, DonationService, DonationPickupDetails, ClaimRepository, ClaimService, UserService, UserContact; PickupApiTests | COMPLETED |
-| B06   | Report a listing: V8__create_reports.sql; reports module (Report, ReportRepository, CreateReportRequest, ReportResponse, ReportService, ReportController); ReportApiTests | NEEDS REVIEW |
+| B06   | Report a listing: V8__create_reports.sql; reports module (Report, ReportRepository, CreateReportRequest, ReportResponse, ReportService, ReportController); ReportApiTests | COMPLETED |
+| M01   | Mobile app setup: Expo project in apps/mobile, Firebase phone login, profile setup screen | PROPOSED |
 
 Notes:
 
@@ -861,7 +862,7 @@ As of 2026-11-15, all verified by hand:
 | GET    | /api/v1/donations/{id}/pickup | Firebase token needed | PRIVATE. Donor and accepted receiver only: pickup address, both names and phone numbers, who has confirmed. |
 | POST   | /api/v1/donations/{id}/pickup/confirm | Firebase token needed | Donor or accepted receiver confirms the handover. Both confirmations complete the donation. |
 | POST   | /api/v1/donations/{id}/pickup/cancel | Firebase token needed | Donor or accepted receiver cancels the reservation. Answers 204. |
-| POST   | /api/v1/donations/{id}/reports | Firebase token needed | Report a listing. Body {"reason": "...", "details": "..."}. Answers 201. (B06, not yet verified) |
+| POST   | /api/v1/donations/{id}/reports | Firebase token needed | Report a listing. Body {"reason": "...", "details": "..."}. Answers 201. |
 | GET    | /api/v1/files/...    | Firebase token needed | A stored photo, at the address given in imageUrls. |
 
 * Every other address answers 401 without a valid token.
@@ -944,12 +945,13 @@ Batch B05 result: ship reported Tests run: 35, Failures: 0, Errors: 0, BUILD SUC
 
 Batch B06 was approved on 2026-11-17 (the migration was shown in full first) and written. V8 is exactly the migration that was shown.
 
+Batch B06 result: ship reported Tests run: 38, Failures: 0, Errors: 0, BUILD SUCCESS, committed and pushed as 94a7637. It passed on the first run. V8 has run and must never be edited. The backend now covers the whole MVP scope in section 2A.
+
 RESUME HERE – next steps, in order:
 
-1. The project owner runs from H:\Project\Umeed: ship "Add reports: report a listing". Expected: Tests run: 38, Failures: 0, Errors: 0 and SHIPPED. B06 was written without being compiled, so a failure on the first run is possible. Once it succeeds, V8 must never be edited.
-2. After B06 passes, mark it COMPLETED. The backend then covers the whole MVP scope in section 2A.
-3. Manual check with a real Firebase token (steps below). Not yet done by the project owner as far as the AI knows.
-4. Then the mobile app (Expo, React Native, TypeScript). First batch: project setup through an approved Expo initialization exception (explain the generated files first), Firebase phone login, and the profile setup screen. Decisions needed first: the Android package name and iOS bundle identifier (suggested com.umeed.app), and whether to start with Expo Go or a development build (Firebase phone login on a real device usually needs a development build).
+1. Done on 2026-11-15 (clock time on the PC): manual check with real Firebase tokens for two users (donor and receiver, the second using a second Firebase test phone number). The project owner reported that every step matched: profile, posting with a real photo (location rounded, no pickup address in the reply), nearby feed, photo download, own-claim refused, claim, claims visible to the donor only, pickup details hidden before acceptance, accept, pickup details for both parties, both confirmations completing the donation, report and duplicate report, 401 without a token. Lessons: a Firebase ID token expires after one hour (the backend correctly answers 401 "Jwt expired"); a phone number that is not saved as a Firebase test number makes Firebase try a real SMS and fail with BILLING_NOT_ENABLED.
+2. Batch M01, the first mobile app batch, is proposed and waits for APPROVE plus decisions: the app identifier (suggested com.umeed.app for both Android and iOS), and the plan to test on a real Android phone with an Expo development build built locally with Android Studio (Expo Go cannot run Firebase phone login). Proposed contents: an approved Expo initialization exception that creates apps/mobile (TypeScript, Expo Router); the agreed libraries (TanStack Query, Zustand, React Hook Form, Zod) and the React Native Firebase auth library; screens: phone number, OTP code, profile setup (display name), and a placeholder home screen; an API client that sends the Firebase token and reads the ApiError shape; the backend address set by an environment variable (a phone must use the PC's network address, not localhost). The AI must check the current Expo and React Native Firebase setup documentation before writing, because these change often.
+3. iOS builds need a Mac or Expo's cloud build service; to be decided later.
 
 Manual check with a real token (cmd). Get FB_TOKEN with the recipe below first, and keep the backend running in a second window (cd /d H:\Project\Umeed\backend, then mvnw.cmd spring-boot:run).
 
