@@ -6,6 +6,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 @Service
 public class UserService {
 
@@ -37,6 +42,32 @@ public class UserService {
         }
         user.changeDisplayName(displayName);
         return UserResponse.from(user);
+    }
+
+    /**
+     * Returns the active user for a verified Firebase identity. For use by other modules.
+     */
+    @Transactional(readOnly = true)
+    public UserResponse requireActiveUser(String firebaseUid) {
+        User user = userRepository.findByFirebaseUid(firebaseUid)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (user.getStatus() != User.Status.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is not active");
+        }
+        return UserResponse.from(user);
+    }
+
+    /**
+     * Returns display names for the given user ids. Users without a name get a neutral placeholder.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, String> displayNamesByIds(Collection<UUID> userIds) {
+        Map<UUID, String> names = new HashMap<>();
+        for (User user : userRepository.findAllById(userIds)) {
+            String name = user.getDisplayName();
+            names.put(user.getId(), name != null && !name.isBlank() ? name : "Umeed user");
+        }
+        return names;
     }
 
     private UserResponse register(String firebaseUid, String phoneNumber) {
