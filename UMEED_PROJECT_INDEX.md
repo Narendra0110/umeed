@@ -2,9 +2,9 @@
 
 Version: 2.0
 
-Last updated: 2026-11-16
+Last updated: 2026-11-17
 
-Project status: BATCH B05 (PICKUP) SHIPPED (35 TESTS PASS) – THE BACKEND COVERS THE WHOLE MVP FLOW – NEXT: MANUAL CHECK WITH A REAL TOKEN, THEN B06 (REPORTS), THEN THE MOBILE APP
+Project status: BATCH B06 (REPORT A LISTING) WRITTEN, NOT YET VERIFIED – WAITING FOR THE ship RESULT. AFTER IT THE MVP BACKEND IS COMPLETE.
 
 Project folder: H:\Project\Umeed
 
@@ -166,6 +166,16 @@ Decided: 2026-11-16
 * Each side confirms the handover separately. When both have confirmed, the donation becomes COMPLETED. The database refuses COMPLETED without both confirmations.
 * Cancelling a reservation is part of the MVP (AI recommendation; the project owner approved the batch without objecting). The donor or the accepted receiver can cancel while the item is RESERVED. The item returns to AVAILABLE and to the feed, and any confirmation is cleared. The claims that were rejected by that acceptance become PENDING again. The cancelled claim is closed: WITHDRAWN if the receiver cancelled, REJECTED if the donor did, and that person cannot claim the same item again.
 * Pickup time scheduling (propose, accept, reschedule) is not in the MVP. The two sides arrange the time by phone.
+
+## Report decisions
+
+Decided: 2026-11-17
+
+* Any logged-in user can report a listing once. A donor cannot report their own listing.
+* Reasons: SELLING_OR_ASKING_MONEY, PROHIBITED_ITEM, FAKE_OR_MISLEADING, OFFENSIVE, OTHER. Details are optional (up to 500 characters) but required for OTHER.
+* No automatic hiding in the MVP (AI suggestion, approved by the project owner). A reported listing stays visible until the project owner reviews it.
+* During the MVP, reports are reviewed by hand in the database (see "Reviewing reports" in section 12A). A report status is OPEN, REVIEWED or DISMISSED.
+* The response to the reporter never says who else reported the listing, and the donor is not told who reported them.
 
 ---
 
@@ -679,6 +689,7 @@ From 2026-11-15 work is tracked by feature batch, not by file number.
 | B03   | Nearby-first feed, my donations, remove a listing: DonationRepository, Donation.markRemoved, DonationService, DonationController, 4 new tests in DonationApiTests | COMPLETED |
 | B04   | Claims: V6__create_claims.sql; claims module (Claim, ClaimRepository, CreateClaimRequest, ClaimResponse, ClaimService, ClaimController); donations additions (DonationSummary, DonationRemovedEvent, row locks, reserve, markReserved); ClaimApiTests | COMPLETED |
 | B05   | Pickup: V7__add_handover_confirmation.sql; pickup module (PickupResponse, PickupService, PickupController); additions to Donation, DonationService, DonationPickupDetails, ClaimRepository, ClaimService, UserService, UserContact; PickupApiTests | COMPLETED |
+| B06   | Report a listing: V8__create_reports.sql; reports module (Report, ReportRepository, CreateReportRequest, ReportResponse, ReportService, ReportController); ReportApiTests | NEEDS REVIEW |
 
 Notes:
 
@@ -850,6 +861,7 @@ As of 2026-11-15, all verified by hand:
 | GET    | /api/v1/donations/{id}/pickup | Firebase token needed | PRIVATE. Donor and accepted receiver only: pickup address, both names and phone numbers, who has confirmed. |
 | POST   | /api/v1/donations/{id}/pickup/confirm | Firebase token needed | Donor or accepted receiver confirms the handover. Both confirmations complete the donation. |
 | POST   | /api/v1/donations/{id}/pickup/cancel | Firebase token needed | Donor or accepted receiver cancels the reservation. Answers 204. |
+| POST   | /api/v1/donations/{id}/reports | Firebase token needed | Report a listing. Body {"reason": "...", "details": "..."}. Answers 201. (B06, not yet verified) |
 | GET    | /api/v1/files/...    | Firebase token needed | A stored photo, at the address given in imageUrls. |
 
 * Every other address answers 401 without a valid token.
@@ -930,12 +942,14 @@ Batch B05 was approved on 2026-11-16 (the private response and the migration wer
 
 Batch B05 result: ship reported Tests run: 35, Failures: 0, Errors: 0, BUILD SUCCESS, committed and pushed as 7b6e65c. It passed on the first run. V7 has run and must never be edited. The session ended here because the project owner's usage limit was almost reached.
 
+Batch B06 was approved on 2026-11-17 (the migration was shown in full first) and written. V8 is exactly the migration that was shown.
+
 RESUME HERE – next steps, in order:
 
-1. Commit this index update: ship "Update project index: pickup shipped, manual test steps".
-2. Manual check by the project owner with a real Firebase token (steps below). All batches since B01 were verified only by automated tests with a simulated login.
-3. Propose B06: report a listing (the last backend item in the MVP scope). It needs a new migration, shown in full first.
-4. Then the mobile app (Expo, React Native, TypeScript), starting with the project setup, login and the swipe feed.
+1. The project owner runs from H:\Project\Umeed: ship "Add reports: report a listing". Expected: Tests run: 38, Failures: 0, Errors: 0 and SHIPPED. B06 was written without being compiled, so a failure on the first run is possible. Once it succeeds, V8 must never be edited.
+2. After B06 passes, mark it COMPLETED. The backend then covers the whole MVP scope in section 2A.
+3. Manual check with a real Firebase token (steps below). Not yet done by the project owner as far as the AI knows.
+4. Then the mobile app (Expo, React Native, TypeScript). First batch: project setup through an approved Expo initialization exception (explain the generated files first), Firebase phone login, and the profile setup screen. Decisions needed first: the Android package name and iOS bundle identifier (suggested com.umeed.app), and whether to start with Expo Go or a development build (Firebase phone login on a real device usually needs a development build).
 
 Manual check with a real token (cmd). Get FB_TOKEN with the recipe below first, and keep the backend running in a second window (cd /d H:\Project\Umeed\backend, then mvnw.cmd spring-boot:run).
 
@@ -1056,6 +1070,13 @@ The one-file-at-a-time workflow was replaced by feature batches at the project o
 * UMEED_DB_PASSWORD is set once with setx, so it no longer has to be typed in every window.
 * Standing approval: the AI updates this index after each batch without asking and reports what changed. Changes to the master instructions still need explicit approval.
 * Manual checks are requested only when a test cannot cover something.
+
+Reviewing reports (until the admin dashboard exists), in cmd:
+
+* List open reports with the listing title and the reporter's name:
+  "C:\Program Files\PostgreSQL\18\bin\psql.exe" -U umeed_app -d umeed_dev -c "SELECT r.id, r.created_at, r.reason, r.details, d.id AS donation_id, d.title, d.status, u.display_name AS reporter FROM reports r JOIN donations d ON d.id = r.donation_id JOIN users u ON u.id = r.reporter_id WHERE r.status = 'OPEN' ORDER BY r.created_at;"
+* Mark a report as handled: UPDATE reports SET status = 'REVIEWED' WHERE id = '...'; (or 'DISMISSED').
+* Taking a listing down by hand: UPDATE donations SET status = 'REMOVED' WHERE id = '...' AND status = 'AVAILABLE'; Note that this bypasses the code, so its pending claims are not rejected automatically; also run UPDATE claims SET status = 'REJECTED' WHERE donation_id = '...' AND status = 'PENDING';
 
 ---
 
