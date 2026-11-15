@@ -8,10 +8,13 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.validation.BindException;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -23,15 +26,22 @@ class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     ResponseEntity<ApiError> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        List<ApiError.FieldError> fieldErrors = ex.getBindingResult().getFieldErrors().stream()
-                .map(error -> new ApiError.FieldError(error.getField(), error.getDefaultMessage()))
-                .toList();
-        return respond(HttpStatus.BAD_REQUEST, "Validation failed", request, fieldErrors);
+        return respond(HttpStatus.BAD_REQUEST, "Validation failed", request, fieldErrors(ex.getBindingResult()));
+    }
+
+    @ExceptionHandler(BindException.class)
+    ResponseEntity<ApiError> handleBinding(BindException ex, HttpServletRequest request) {
+        return respond(HttpStatus.BAD_REQUEST, "Validation failed", request, fieldErrors(ex.getBindingResult()));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     ResponseEntity<ApiError> handleUnreadableBody(HttpServletRequest request) {
         return respond(HttpStatus.BAD_REQUEST, "Request body is missing or is not valid JSON", request, List.of());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiError> handleUploadTooLarge(HttpServletRequest request) {
+        return respond(HttpStatusCode.valueOf(413), "Each photo must be 5 MB or smaller", request, List.of());
     }
 
     @ExceptionHandler(ResponseStatusException.class)
@@ -53,6 +63,15 @@ class GlobalExceptionHandler {
         }
         log.error("Unhandled error on {} {}", request.getMethod(), request.getRequestURI(), ex);
         return respond(HttpStatus.INTERNAL_SERVER_ERROR, "Something went wrong. Please try again.", request, List.of());
+    }
+
+    /** A value that could not be read at all (for example a malformed id) gets a plain message, not a technical one. */
+    private static List<ApiError.FieldError> fieldErrors(BindingResult result) {
+        return result.getFieldErrors().stream()
+                .map(error -> new ApiError.FieldError(
+                        error.getField(),
+                        error.isBindingFailure() ? "Invalid value" : error.getDefaultMessage()))
+                .toList();
     }
 
     private static ResponseEntity<ApiError> respond(

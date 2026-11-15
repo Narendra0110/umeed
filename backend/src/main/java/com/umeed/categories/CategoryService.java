@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 @Service
 public class CategoryService {
@@ -20,5 +21,15 @@ public class CategoryService {
                 .stream()
                 .map(CategoryResponse::from)
                 .toList();
+    }
+
+    /**
+     * Tells other modules whether a category exists and is active.
+     */
+    @Transactional(readOnly = true)
+    public boolean isActiveCategory(UUID categoryId) {
+        return categoryRepository.findById(categoryId)
+                .map(Category::isActive)
+                .orElse(false);
     }
 }

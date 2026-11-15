@@ -2,9 +2,9 @@
 
 Version: 2.0
 
-Last updated: 2026-11-15
+Last updated: 2026-11-16
 
-Project status: BATCH B01 SHIPPED (11 TESTS PASS) – BATCH B02 (POST AND BROWSE DONATIONS) IS APPROVED BUT NOT WRITTEN YET
+Project status: BATCH B02 (POST AND BROWSE DONATIONS) WRITTEN, NOT YET VERIFIED – WAITING FOR THE ship RESULT
 
 Project folder: H:\Project\Umeed
 
@@ -466,14 +466,18 @@ Done:
 * CreateDonationRequest and DonationResponse.
 * User lookups for other modules in UserService (requireActiveUser, displayNamesByIds).
 
-Not done yet (next batch):
+Written in batch B02, waiting for verification:
 
 * CategoryService.isActiveCategory.
 * DonationService: create a donation with photos, list the feed, view one donation.
-* DonationController and the endpoint that serves photos.
-* Upload size limits in application.properties and the security rule for public photo and feed access.
+* DonationController and FileController (serves photos).
+* Upload size limits in application.properties.
 * Automated tests for donations.
-* Later batches: nearby-first sorting, edit and remove a listing, my donations.
+
+Not done yet:
+
+* Nearby-first sorting of the feed.
+* My donations, edit and remove a listing.
 
 Note: the categories module, which donations depend on, is already complete (files 009 and 011 to 016).
 
@@ -649,7 +653,7 @@ From 2026-11-15 work is tracked by feature batch, not by file number.
 | Batch | Contents | Status |
 | ----- | -------- | ------ |
 | B01   | Workflow change: UMEED_MASTER_INSTRUCTIONS.md version 3.0, ship.cmd, first automated API tests (CategoryApiTests, SecurityRulesTests, UserApiTests), this index | COMPLETED |
-| B02   | Post and browse donations (see section 12 for the approved plan) | APPROVED, NOT WRITTEN |
+| B02   | Post and browse donations: CategoryService.isActiveCategory, DonationService, DonationController, FileController, PageResponse, upload limits, GlobalExceptionHandler additions, DonationApiTests | NEEDS REVIEW |
 
 Notes:
 
@@ -807,6 +811,10 @@ As of 2026-11-15, all verified by hand:
 | GET    | /api/v1/categories   | Public                | List of active categories (id, slug, name) |
 | GET    | /api/v1/users/me     | Firebase token needed | The caller's own profile. Creates the user on first call. |
 | PUT    | /api/v1/users/me     | Firebase token needed | Set the display name. Body: {"displayName": "..."} |
+| POST   | /api/v1/donations    | Firebase token needed | Post a donation. Multipart form: categoryId, title, description, itemCondition, city, area, latitude, longitude, pickupAddress, and 1 to 5 files named photos. Answers 201. (B02, not yet verified) |
+| GET    | /api/v1/donations    | Firebase token needed | The feed: available donations, newest first. Parameters page (default 0) and size (default 20, maximum 50). Answers items, page, size, totalItems, totalPages, hasNext. (B02, not yet verified) |
+| GET    | /api/v1/donations/{id} | Firebase token needed | One donation. 404 if unknown or removed. (B02, not yet verified) |
+| GET    | /api/v1/files/...    | Firebase token needed | A stored photo, at the address given in imageUrls. (B02, not yet verified) |
 
 * Every other address answers 401 without a valid token.
 * The token is sent in the header: Authorization: Bearer followed by the Firebase ID token.
@@ -848,34 +856,28 @@ Do not block unrelated development on decisions that can safely be deferred.
 
 # 12. LAST SESSION SUMMARY
 
-Date: 2026-11-15
+Date: 2026-11-16
 
 Completed:
 
-* Finished the real token test: GET /api/v1/users/me works end to end (028).
-* Built and verified profile setup: PUT /api/v1/users/me (030 to 033).
-* Built and verified global error handling (035, 036).
-* Decided the donation design (section 2A, "Donation decisions").
-* Built the first half of the donations module: tables, entities, repositories, photo storage, request and response types, user lookups (037 to 047).
-* Changed the workflow to feature batches and wrote batch B01: master instructions 3.0, ship.cmd and the first automated API tests.
+* Wrote batch B02 exactly to the plan approved on 2026-11-15 (login first).
+
+Batch B02 notes:
+
+* One file was added beyond the plan: com.umeed.common.PageResponse, a stable shape for paged lists (items, page, size, totalItems, totalPages, hasNext). Reason: returning Spring's own page object as JSON is not a supported, stable format.
+* GlobalExceptionHandler now also handles form binding errors (same 400 shape as JSON validation) and oversized uploads (413). A value that cannot be read at all, such as a malformed id, is reported as "Invalid value".
+* Photos are checked by their first bytes, not by file name or the type the client claims, so a renamed non-image file is rejected.
+* If saving fails part way, photos already stored for that donation are deleted again.
+* Login first has a consequence for the mobile app: photo addresses need the token too, so the app's image component must send the Authorization header when loading photos.
+* Relative photo addresses: imageUrls contain paths such as /api/v1/files/donations/2026/11/x.jpg. The app adds the server address in front.
+* Not covered by automated tests: the 5 MB limit enforced by the server itself (the test tool does not enforce upload limits), a real upload from a phone, and a real Firebase token on the new endpoints.
+* The tests store photos in a temporary folder (umeed-test-storage inside the system temp folder) and delete it after each test.
 
 RESUME HERE – next steps, in order:
 
-1. Write batch B02. The project owner already replied APPROVE on 2026-11-15, with the choice "login first". The session ended before any B02 file was written, because the project owner's usage limit was almost reached. No new approval is needed for the plan below, but confirm briefly before writing.
-2. The project owner runs: ship "Add donations: post with photos, feed, details".
-3. Then propose B03: nearby-first feed sorting, my donations, edit and remove a listing.
-4. Later: claims; pickup with address and phone reveal; reports; then the mobile app.
-
-Approved plan for batch B02 (no new migration):
-
-* CategoryService: add public boolean isActiveCategory(UUID categoryId), read-only transaction, using categoryRepository.findById(id).map(Category::isActive).orElse(false). Needs import java.util.UUID.
-* DonationService (new, public, package com.umeed.donations): create(firebaseUid, CreateDonationRequest, photos) – calls UserService.requireActiveUser, refuses with 403 if the profile is not complete, refuses with 400 if the category is not active, checks 1 to 5 photos, each JPEG, PNG or WebP and at most 5 MB, saves the Donation, stores each photo through FileStorage under a key like donations/{year}/{month}/{random uuid}.{ext}, saves DonationImage rows with sort_order 0 to 4, and deletes already stored files if anything fails. listFeed(pageable) – AVAILABLE donations, newest first, with donor names from UserService.displayNamesByIds and photos from findByDonationIdInOrderByDonationIdAscSortOrderAsc in one query. getOne(id) – 404 if not found or REMOVED.
-* DonationController (new, package-private): POST /api/v1/donations as multipart form (fields bound to CreateDonationRequest with @Valid, files in the part named photos), answers 201; GET /api/v1/donations with page and size (default size 20, maximum 50); GET /api/v1/donations/{id}.
-* FileController (new, package com.umeed.storage): GET /api/v1/files/** streams a stored photo with the right content type and a cache header; 404 if missing or the key is invalid.
-* application.properties: spring.servlet.multipart.max-file-size=5MB and spring.servlet.multipart.max-request-size=26MB.
-* SecurityConfig: no change needed, because login first means every new address needs a token and that is already the default rule. Add tests proving the new addresses answer 401 without a token.
-* GlobalExceptionHandler: add a handler so an upload that is too large answers 413 in the common error shape.
-* DonationApiTests (new): post with photos succeeds and appears in the feed and by id; the response has no pickup address; missing photos, a wrong file type, an unknown category and an incomplete profile are refused; requests without a token answer 401. Tests run in a rolled-back transaction and must delete any files they store.
+1. The project owner runs from H:\Project\Umeed: ship "Add donations: post with photos, feed, details". Expected: Tests run: 20, Failures: 0, Errors: 0 and SHIPPED. If the build fails, show the error; B02 was written without being compiled, so a compile error or a failing test is possible and is fixed before anything else.
+2. After B02 passes, mark it COMPLETED and propose B03: nearby-first feed sorting (distance formula in SQL, caller sends latitude and longitude), my donations, edit and remove a listing.
+3. Later: claims; pickup with address and phone reveal; reports; then the mobile app.
 
 How to get a Firebase ID token for testing (all in cmd; the Web API Key, the token and passwords must not be pasted to the AI):
 
