@@ -4,7 +4,7 @@ Version: 2.0
 
 Last updated: 2026-11-16
 
-Project status: BATCH B05 (PICKUP) WRITTEN, NOT YET VERIFIED – WAITING FOR THE ship RESULT
+Project status: BATCH B05 (PICKUP) SHIPPED (35 TESTS PASS) – THE BACKEND COVERS THE WHOLE MVP FLOW – NEXT: MANUAL CHECK WITH A REAL TOKEN, THEN B06 (REPORTS), THEN THE MOBILE APP
 
 Project folder: H:\Project\Umeed
 
@@ -678,7 +678,7 @@ From 2026-11-15 work is tracked by feature batch, not by file number.
 | B02   | Post and browse donations: CategoryService.isActiveCategory, DonationService, DonationController, FileController, PageResponse, upload limits, GlobalExceptionHandler additions, DonationApiTests | COMPLETED |
 | B03   | Nearby-first feed, my donations, remove a listing: DonationRepository, Donation.markRemoved, DonationService, DonationController, 4 new tests in DonationApiTests | COMPLETED |
 | B04   | Claims: V6__create_claims.sql; claims module (Claim, ClaimRepository, CreateClaimRequest, ClaimResponse, ClaimService, ClaimController); donations additions (DonationSummary, DonationRemovedEvent, row locks, reserve, markReserved); ClaimApiTests | COMPLETED |
-| B05   | Pickup: V7__add_handover_confirmation.sql; pickup module (PickupResponse, PickupService, PickupController); additions to Donation, DonationService, DonationPickupDetails, ClaimRepository, ClaimService, UserService, UserContact; PickupApiTests | NEEDS REVIEW |
+| B05   | Pickup: V7__add_handover_confirmation.sql; pickup module (PickupResponse, PickupService, PickupController); additions to Donation, DonationService, DonationPickupDetails, ClaimRepository, ClaimService, UserService, UserContact; PickupApiTests | COMPLETED |
 
 Notes:
 
@@ -847,9 +847,9 @@ As of 2026-11-15, all verified by hand:
 | POST   | /api/v1/claims/{id}/accept | Firebase token needed | Donor only: accept one claim. Rejects the others and reserves the item. |
 | POST   | /api/v1/claims/{id}/withdraw | Firebase token needed | Claimant only: withdraw a pending claim. |
 | GET    | /api/v1/claims/mine  | Firebase token needed | The caller's own claims, newest first, paged. |
-| GET    | /api/v1/donations/{id}/pickup | Firebase token needed | PRIVATE. Donor and accepted receiver only: pickup address, both names and phone numbers, who has confirmed. (B05, not yet verified) |
-| POST   | /api/v1/donations/{id}/pickup/confirm | Firebase token needed | Donor or accepted receiver confirms the handover. Both confirmations complete the donation. (B05, not yet verified) |
-| POST   | /api/v1/donations/{id}/pickup/cancel | Firebase token needed | Donor or accepted receiver cancels the reservation. Answers 204. (B05, not yet verified) |
+| GET    | /api/v1/donations/{id}/pickup | Firebase token needed | PRIVATE. Donor and accepted receiver only: pickup address, both names and phone numbers, who has confirmed. |
+| POST   | /api/v1/donations/{id}/pickup/confirm | Firebase token needed | Donor or accepted receiver confirms the handover. Both confirmations complete the donation. |
+| POST   | /api/v1/donations/{id}/pickup/cancel | Firebase token needed | Donor or accepted receiver cancels the reservation. Answers 204. |
 | GET    | /api/v1/files/...    | Firebase token needed | A stored photo, at the address given in imageUrls. |
 
 * Every other address answers 401 without a valid token.
@@ -928,12 +928,28 @@ Batch B04 result: ship reported Tests run: 30, Failures: 0, Errors: 0, BUILD SUC
 
 Batch B05 was approved on 2026-11-16 (the private response and the migration were shown in full first) and written. V7 is exactly the migration that was shown. New module: com.umeed.pickup, which uses the donations, claims and users services and has no table of its own.
 
+Batch B05 result: ship reported Tests run: 35, Failures: 0, Errors: 0, BUILD SUCCESS, committed and pushed as 7b6e65c. It passed on the first run. V7 has run and must never be edited. The session ended here because the project owner's usage limit was almost reached.
+
 RESUME HERE – next steps, in order:
 
-1. The project owner runs from H:\Project\Umeed: ship "Add pickup: private details, confirm handover, cancel reservation". Expected: Tests run: 35, Failures: 0, Errors: 0 and SHIPPED. B05 was written without being compiled, so a failure on the first run is possible. Once it succeeds, V7 must never be edited.
-2. After B05 passes, mark it COMPLETED. The backend then covers the whole MVP flow: login, profile, post, feed, claim, accept, pickup, complete.
-3. Propose B06: report a listing (the last backend item in the MVP scope), stored for review in the database.
-4. Then the mobile app (Expo, React Native). Before it: the project owner should run one end-to-end check of the new endpoints with a real Firebase token, since all verification since B01 has been by automated tests with a simulated token.
+1. Commit this index update: ship "Update project index: pickup shipped, manual test steps".
+2. Manual check by the project owner with a real Firebase token (steps below). All batches since B01 were verified only by automated tests with a simulated login.
+3. Propose B06: report a listing (the last backend item in the MVP scope). It needs a new migration, shown in full first.
+4. Then the mobile app (Expo, React Native, TypeScript), starting with the project setup, login and the swipe feed.
+
+Manual check with a real token (cmd). Get FB_TOKEN with the recipe below first, and keep the backend running in a second window (cd /d H:\Project\Umeed\backend, then mvnw.cmd spring-boot:run).
+
+* 1. Profile: curl -s -i http://localhost:8080/api/v1/users/me -H "Authorization: Bearer %FB_TOKEN%" – expect 200 and displayName Narendra.
+* 2. Post a donation with a real photo (replace the photo path with any JPG or PNG under 5 MB; the categoryId is the Clothes category):
+  curl -s -i -X POST http://localhost:8080/api/v1/donations -H "Authorization: Bearer %FB_TOKEN%" -F "categoryId=e063e312-9fc5-4fda-967b-c88ebe074d15" -F "title=Study table" -F "description=Wooden study table in good shape" -F "itemCondition=GOOD" -F "city=Indore" -F "area=Vijay Nagar" -F "latitude=22.7535" -F "longitude=75.8937" -F "pickupAddress=Flat 12, Test Residency, Indore" -F "photos=@C:\path\to\photo.jpg"
+  Expect 201, status AVAILABLE, latitude 22.75, one address in imageUrls, and no pickupAddress in the reply.
+* 3. Feed: curl -s http://localhost:8080/api/v1/donations -H "Authorization: Bearer %FB_TOKEN%" – expect the new item in items.
+* 4. Photo: curl -s -o "%TEMP%\umeed-check.jpg" http://localhost:8080 followed by the address from imageUrls, with the same Authorization header, then open that file – expect the same picture. The stored copy is in the umeed-storage folder inside the Windows user folder.
+* 5. Mine: curl -s http://localhost:8080/api/v1/donations/mine -H "Authorization: Bearer %FB_TOKEN%" – expect the item.
+* 6. Own claim refused: curl -s -i -X POST http://localhost:8080/api/v1/donations/DONATION_ID/claims -H "Authorization: Bearer %FB_TOKEN%" – expect 403 "You cannot claim your own donation".
+* 7. Without a token: curl -s -i http://localhost:8080/api/v1/donations – expect 401.
+* 8. Claim, accept and pickup need a second user. Add a second test phone number in the Firebase console (Authentication, Sign-in method, Phone, Phone numbers for testing), get a second token in another window, set a display name for that user with PUT /api/v1/users/me, claim with the second token, accept and read /pickup with the first.
+* 9. Clean up: DELETE /api/v1/donations/DONATION_ID removes the test listing from the feed (only while it is AVAILABLE).
 
 How to get a Firebase ID token for testing (all in cmd; the Web API Key, the token and passwords must not be pasted to the AI):
 
