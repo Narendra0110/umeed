@@ -1,6 +1,6 @@
 # UMEED – MASTER AI DEVELOPMENT INSTRUCTIONS
 
-Version: 2.0
+Version: 3.0
 Status: Finalized
 Project: Umeed
 
@@ -16,11 +16,11 @@ You must understand the entire project before implementing individual features.
 
 IMPORTANT:
 
-I want to build this project ONE FILE AT A TIME.
+I want to build this project ONE FEATURE BATCH AT A TIME (see section 5).
 
-You must propose every file before creating or modifying it.
+You must propose every batch as a short plan before creating or modifying its files.
 
-You must wait for my explicit approval before touching that file.
+You must wait for my explicit approval of the plan before touching those files.
 
 You must maintain project documentation so development can resume in a new AI session without losing progress.
 
@@ -121,6 +121,8 @@ Do not independently upgrade dependencies without approval.
 Use PostgreSQL as the primary relational database.
 
 Use PostGIS for nearby donation and need-request discovery.
+
+MVP exception, agreed on 2026-11-15: PostGIS is deferred. During the MVP, locations are stored as plain latitude and longitude columns and nearby sorting uses a distance formula in SQL. PostGIS can be added later through a migration without changing the API.
 
 Use Spring Data JPA and Hibernate for database access.
 
@@ -224,11 +226,11 @@ Critical database operations must use appropriate transactions.
 
 ---
 
-# 5. ONE FILE AT A TIME – MANDATORY WORKFLOW
+# 5. FEATURE BATCH WORKFLOW – MANDATORY
 
-This is the most important instruction in this document.
+This section replaced the earlier one-file-at-a-time workflow on 2026-11-15, at my request, to make progress faster.
 
-You must follow this process for EVERY file.
+Work is done in feature batches. A batch is a small, complete piece of functionality, for example "create a donation" or "claim a donation". A batch normally contains several files.
 
 ## STEP 1: Inspect
 
@@ -236,121 +238,83 @@ Before starting:
 
 * Read UMEED_MASTER_INSTRUCTIONS.md.
 * Read UMEED_PROJECT_INDEX.md.
-* Inspect the repository.
-* Inspect related existing files.
+* Inspect the repository and the related existing files.
 * Identify existing implementations.
-* Check current Git status if available.
 
 Never assume a file does not exist.
 
-## STEP 2: Propose exactly one file
+## STEP 2: Propose one batch as a short plan
 
-Explain:
+Explain briefly:
 
-1. File number.
-2. Exact file path.
-3. Purpose.
-4. Responsibilities.
-5. Dependencies.
-6. Expected changes.
-7. Why it should be created now.
+1. What the batch delivers.
+2. The list of files to create or change, with one line each.
+3. Any decision I need to make.
+4. Anything risky or hard to undo.
 
-Do not propose several files for simultaneous creation.
+Keep the plan short. Do not paste full file contents into the plan, with two exceptions that must be shown in full before they are written:
+
+* Database migrations, because a migration cannot be edited after it has run.
+* Anything that changes security rules or handles private data such as pickup addresses or phone numbers.
 
 ## STEP 3: Wait for approval
 
-STOP.
-
-Wait for my explicit approval.
+STOP and wait for my explicit approval of the plan.
 
 Accept:
 
 * APPROVE
-* CREATE THIS FILE
 * YES, PROCEED
+
+One approval covers every file listed in the plan. A file that is not in the plan needs a new approval, unless it is a small fix needed to make the approved batch compile or pass its tests. Report every such fix.
 
 Do not interpret general discussion as approval.
 
-## STEP 4: Create or modify one file
+## STEP 4: Write the batch
 
 After approval:
 
-* Create only the approved file.
-* Modify only the approved file.
-* Do not create additional files.
-* Do not modify unrelated files.
-* Do not rename existing files.
-* Do not delete files.
-* Do not install dependencies.
-* Do not change project configuration.
+* Create or modify only the files in the approved plan.
+* Do not rename or delete files without approval.
+* Do not change dependencies unless the plan says so.
+* Write automated tests for the batch as part of the batch.
 
-If another file is required, stop and propose that file separately.
+## STEP 5: Verify once per batch
 
-## STEP 5: Verify
+* I run one command: ship "commit message". The ship.cmd script runs the build and all tests, and only if they pass it commits and pushes.
+* Automated tests are the main verification. BUILD SUCCESS must mean the feature works.
+* Ask me for a manual check only when a test cannot cover something, for example a real Firebase token or how something looks.
+* Never claim that tests passed unless I reported the result.
+* If the build fails, nothing is committed. Fix the problem before starting another batch.
 
-After implementation:
+## STEP 6: Update the project index
 
-* Check Java or TypeScript syntax.
-* Check imports.
-* Check types.
-* Check compatibility.
-* Run appropriate targeted checks when possible.
-* Report actual test results.
+Standing approval, granted on 2026-11-15: after each batch, update UMEED_PROJECT_INDEX.md without asking, and tell me what changed.
 
-Never claim that tests passed unless they were executed.
+This standing approval covers only the project index. Changes to this master instructions file always need my explicit approval.
 
-## STEP 6: Update project documentation
+## STEP 7: Report briefly and propose the next batch
 
-Update UMEED_PROJECT_INDEX.md after every completed file.
-
-However, the index is also a file.
-
-Therefore, updating it requires its own approval unless I have explicitly granted a standing approval for index-only progress updates.
-
-Never silently modify the index.
-
-If index approval is not available, provide the exact proposed index changes and ask for approval.
-
-## STEP 7: STOP
-
-After completing the approved file:
-
-* Explain what was implemented.
-* Explain important decisions.
-* Explain verification results.
-* Identify the next suggested file.
-* Ask for approval before continuing.
-
-Never automatically proceed to another file.
+* Say what was built, what was verified and what was not.
+* Mention important decisions and known gaps.
+* Propose the next batch as a short plan.
 
 ---
 
-# 6. STRICT FILE MANAGEMENT RULES
+# 6. FILE MANAGEMENT RULES
 
-1. One file per approval.
-2. Never generate an entire project automatically.
-3. Never create multiple files in one step.
-4. Never overwrite existing files without approval.
-5. Never delete files without approval.
-6. Never rename files without approval.
-7. Never modify dependencies without approval.
-8. Never run scaffolding commands without reviewing their generated files.
-9. Never make hidden changes.
-10. Never perform automatic refactoring across multiple files.
-11. Never generate migrations without approval for each migration file.
-12. Never create placeholder files without approval.
+1. One feature batch per approval.
+2. Never generate an entire project or several features automatically.
+3. Never overwrite, delete or rename existing files outside an approved plan.
+4. Never modify dependencies outside an approved plan.
+5. Never run scaffolding commands without explaining the generated files first.
+6. Never make hidden changes. Every changed file is listed in the report.
+7. Never edit a migration that has already run. Every schema change is a new migration.
+8. Show every new migration in full before it is written.
+9. Never commit secrets. Passwords and keys come from environment variables.
+10. Keep batches small enough that a failure is easy to locate. Prefer two small batches to one large one.
 
-IMPORTANT EXCEPTION:
-
-Framework initialization tools such as Spring Initializr, Expo project generators and Next.js generators may generate multiple files.
-
-Do not execute these tools automatically.
-
-First explain the generated files and propose an explicit initialization exception.
-
-I can approve or reject the exception.
-
-Without that exception, use individually approved file creation.
+Framework initialization tools such as Expo project generators and Next.js generators may generate multiple files. Explain what they generate and get approval before they are run.
 
 ---
 
@@ -667,13 +631,15 @@ Important scenarios:
 
 Never claim tests passed without running them.
 
+Every feature batch includes automated tests for its endpoints. API tests use MockMvc with a simulated verified token, so they need no real Firebase token. They run against the local development database inside a transaction that is rolled back, so they leave no data behind.
+
 ---
 
 # 14. GIT AND BACKUP
 
 Use Git from the beginning.
 
-Maintain meaningful commits after verified changes.
+Maintain meaningful commits after verified changes. The ship.cmd script in the repository root does this: it runs the tests and, only if they pass, commits and pushes.
 
 Never force-push or reset existing work without permission.
 
@@ -698,7 +664,7 @@ Before every new AI session:
 5. Identify the last completed file.
 6. Identify the next task.
 7. Explain the current state.
-8. Propose exactly one next file.
+8. Propose the next feature batch as a short plan.
 9. Wait for approval.
 
 The actual repository is the source of truth.
@@ -721,36 +687,35 @@ Explain technical decisions before implementation.
 
 Do not overwhelm me with huge amounts of code.
 
+Keep messages short. Give detail only where there is a real decision for me.
+
 Do not assume I approved something just because we discussed it.
 
 Ask one focused question when requirements are unclear.
 
-Do not automatically proceed to the next file.
+Do not automatically proceed to the next batch.
 
 ---
 
-# 17. FIRST TASK
+# 17. STARTING A SESSION
 
-Your first task is NOT to generate application code.
-
-First:
+At the start of every session:
 
 1. Read this entire document.
-2. Ask whether an existing Umeed repository exists.
-3. Inspect the repository if available.
-4. Read the project index.
-5. Check installed tools and project configuration if relevant.
-6. Identify the initial development phase.
-7. Propose exactly one first file.
-8. Wait for explicit approval.
+2. Read the project index.
+3. Inspect the repository.
+4. Compare the repository with the index.
+5. Explain the current state briefly.
+6. Propose the next feature batch as a short plan.
+7. Wait for explicit approval.
 
 MANDATORY RULE:
 
-PROPOSE ONE FILE.
+PROPOSE ONE BATCH AS A SHORT PLAN.
 WAIT FOR APPROVAL.
-CREATE ONE FILE.
-VERIFY ONE FILE.
-UPDATE THE INDEX WITH APPROVAL.
-STOP.
+WRITE THE BATCH WITH ITS TESTS.
+VERIFY ONCE WITH ship.
+UPDATE THE INDEX.
+REPORT BRIEFLY AND STOP.
 
 This workflow must be followed for the entire Umeed project.

@@ -4,7 +4,7 @@ Version: 2.0
 
 Last updated: 2026-11-15
 
-Project status: LOGIN AND PROFILE SETUP WORKING AND VERIFIED WITH A REAL FIREBASE TOKEN – NEXT IS GLOBAL ERROR HANDLING, THEN DONATIONS
+Project status: LOGIN, PROFILE SETUP AND ERROR HANDLING WORKING – DONATIONS MODULE HALF BUILT – WORKFLOW CHANGED TO FEATURE BATCHES ON 2026-11-15
 
 Project folder: H:\Project\Umeed
 
@@ -128,6 +128,21 @@ Notes:
 * Without the admin dashboard, listing reports are stored by the backend and reviewed directly in the database during the MVP.
 * The master instructions describe the full long-term product. This section decides what is built first.
 * Moving an item between the two lists requires explicit discussion and approval.
+
+---
+
+## Donation decisions
+
+Decided: 2026-11-15
+
+* Item condition values: NEW, LIKE_NEW, GOOD, USABLE.
+* Donation status values: AVAILABLE, RESERVED, COMPLETED, REMOVED. A donation is never deleted from the table.
+* Photos: 1 to 5 per donation, JPEG, PNG or WebP, at most 5 MB each. The first photo is the cover.
+* Posting a donation is one request that carries the details and the photos together (multipart form). A separate photo upload step was considered and rejected for the MVP.
+* Photo storage during development: a local folder (default: umeed-storage inside the Windows user folder) behind the FileStorage interface. A cloud provider can replace it later by adding one class.
+* Location: each donation stores city, area and approximate latitude and longitude as plain numbers. Coordinates are rounded to two decimals (about one kilometre) before saving. PostGIS is deferred until after the MVP. This is an agreed exception to the technology stack.
+* The public donation response never contains the pickup address or the donor phone number.
+* A donor must have completed their profile (display name set) before posting.
 
 ---
 
@@ -440,7 +455,24 @@ Tasks:
 
 Scope: MVP
 
-Status: NOT STARTED
+Status: IN PROGRESS
+
+Done:
+
+* donations and donation_images tables (V4, V5).
+* Donation and DonationImage entities and their repositories.
+* FileStorage interface and the local folder implementation.
+* CreateDonationRequest and DonationResponse.
+* User lookups for other modules in UserService (requireActiveUser, displayNamesByIds).
+
+Not done yet (next batch):
+
+* CategoryService.isActiveCategory.
+* DonationService: create a donation with photos, list the feed, view one donation.
+* DonationController and the endpoint that serves photos.
+* Upload size limits in application.properties and the security rule for public photo and feed access.
+* Automated tests for donations.
+* Later batches: nearby-first sorting, edit and remove a listing, my donations.
 
 Note: the categories module, which donations depend on, is already complete (files 009 and 011 to 016).
 
@@ -597,6 +629,25 @@ No hand-written application code files have been created yet. The entries below 
 | 032    | backend/src/main/java/com/umeed/users/UserService.java (updateDisplayName) | COMPLETED |
 | 033    | backend/src/main/java/com/umeed/users/UserController.java (PUT /me) | COMPLETED |
 | 034    | UMEED_PROJECT_INDEX.md (progress update) | COMPLETED |
+| 035    | backend/src/main/java/com/umeed/common/ApiError.java | COMPLETED |
+| 036    | backend/src/main/java/com/umeed/common/GlobalExceptionHandler.java | COMPLETED |
+| 037    | backend/src/main/resources/db/migration/V4__create_donations.sql | COMPLETED |
+| 038    | backend/src/main/resources/db/migration/V5__create_donation_images.sql | COMPLETED |
+| 039    | backend/src/main/java/com/umeed/donations/Donation.java | COMPLETED |
+| 040    | backend/src/main/java/com/umeed/donations/DonationImage.java | COMPLETED |
+| 041    | backend/src/main/java/com/umeed/donations/DonationRepository.java | COMPLETED |
+| 042    | backend/src/main/java/com/umeed/donations/DonationImageRepository.java | COMPLETED |
+| 043    | backend/src/main/java/com/umeed/storage/FileStorage.java | COMPLETED |
+| 044    | backend/src/main/java/com/umeed/storage/LocalFileStorage.java | COMPLETED |
+| 045    | backend/src/main/java/com/umeed/donations/CreateDonationRequest.java | NEEDS REVIEW |
+| 046    | backend/src/main/java/com/umeed/donations/DonationResponse.java | NEEDS REVIEW |
+| 047    | backend/src/main/java/com/umeed/users/UserService.java (requireActiveUser, displayNamesByIds) | NEEDS REVIEW |
+
+From 2026-11-15 work is tracked by feature batch, not by file number.
+
+| Batch | Contents | Status |
+| ----- | -------- | ------ |
+| B01   | Workflow change: UMEED_MASTER_INSTRUCTIONS.md version 3.0, ship.cmd, first automated API tests (CategoryApiTests, SecurityRulesTests, UserApiTests), this index | NEEDS REVIEW |
 
 Notes:
 
@@ -631,6 +682,11 @@ Notes:
 * Verification of 030 to 033 on 2026-11-15 with a real token: PUT with "Narendra" returned 200 with displayName Narendra and profileComplete true; PUT with an empty name returned 400; a following GET returned 200 and still showed Narendra.
 * Known issue found in that test: the 400 body is Spring's generic one (timestamp, status, error, path) and does not include the validation message. To be fixed by global error handling.
 * 034 is the update of this file that recorded 028 and 030 to 033.
+* 035 is the common error shape (timestamp, status, error, message, path, fieldErrors). 036 is the handler that produces it for validation errors, unreadable bodies, deliberate errors, access denied, Spring's standard errors and unexpected errors (500 with a generic message, cause logged only). Verified on 2026-11-15 with a real token: empty name gives 400 with both displayName messages; broken body gives 400; valid name gives 200; unknown address gives 404 in the new shape. A request without a token is refused by Spring Security before any controller, so that 401 has an empty body.
+* 037 and 038 verified on 2026-11-15 with psql: donations has fourteen columns, four indexes, four check constraints and two foreign keys; donation_images has five columns, two unique constraints, the 0 to 4 check and one foreign key; flyway_schema_history shows versions 1 to 5 successful. Both have run and must never be edited.
+* 039 to 042 verified by BUILD SUCCESS on 2026-11-15 (entities match their tables, repository method names valid). 043 and 044 verified by BUILD SUCCESS (compile and Spring wiring only; saving a real file is not tested yet).
+* 045, 046 and 047 were written on 2026-11-15 and the build result after them was not shown to the AI. They are covered by the next ship run.
+* Batch B01: the test classes use MockMvc with Spring Security's simulated verified token, so no real Firebase token is needed. UserApiTests runs in a rolled-back transaction against the development database. One uncertainty: the tests need the spring-security-test library, which the AI expects to come with the existing security test starter but could not confirm. If the build reports missing classes from org.springframework.security.test, one dependency is added to pom.xml.
 * 029 is the end of session save of this file. The project owner said the session would continue tomorrow; the AI saved the index following the two earlier end of session saves.
 * Known gap in 027: if a phone number already belongs to a user but arrives with a different Firebase UID, the request fails with a server error. To be handled with global exception handling.
 * 019 is the end of session save of this file, requested by the project owner on 2026-11-12.
@@ -654,7 +710,8 @@ Git commits:
 * All commits were pushed to GitHub on 2026-11-12. The AI did not see whether the 017 index update was committed before that push. If git status shows UMEED_PROJECT_INDEX.md as modified, it is covered by the 019 commit.
 * Commits seen on 2026-11-14, all pushed to origin/main: 5dab79f (Configure Firebase ID token verification), 0c81fed (Add User entity), 0c3377e (Add UserRepository), bb7c82f (Add UserService), 21c77dc (Add GET /api/v1/users/me). Other commits in between (V3 migration, Spring Security pom change, SecurityConfig, UserResponse, index saves) were made by the project owner but their hashes were not all shown.
 * The AI did not see the commits for 030 to 033 or for the 029 index save. The project owner was given the commands.
-* The 034 update of this index is NOT committed or pushed yet.
+* Commits seen on 2026-11-15, pushed: 2172d80 (donations migrations, entities and repositories), df68a95 (FileStorage interface and local folder implementation). Earlier commits of that day were made by the project owner without all hashes being shown.
+* Batch B01 and files 045 to 047 are NOT committed yet as far as the AI has seen. They are committed by the first ship run.
 
 Allowed statuses:
 
@@ -794,13 +851,17 @@ Completed:
 
 * Finished the real token test: GET /api/v1/users/me works end to end (028).
 * Built and verified profile setup: PUT /api/v1/users/me (030 to 033).
-* Updated this index (034).
+* Built and verified global error handling (035, 036).
+* Decided the donation design (section 2A, "Donation decisions").
+* Built the first half of the donations module: tables, entities, repositories, photo storage, request and response types, user lookups (037 to 047).
+* Changed the workflow to feature batches and wrote batch B01: master instructions 3.0, ship.cmd and the first automated API tests.
 
-RESUME HERE – next steps, in order, each needing approval:
+RESUME HERE – next steps, in order:
 
-1. Commit and push the 034 index update: git add UMEED_PROJECT_INDEX.md, git commit -m "Update project index: login and profile setup verified", git push.
-2. Global error handling in package com.umeed.common: one consistent JSON error shape for every error, including the validation messages. Two or three small files, one at a time. Retest PUT /api/v1/users/me with an empty name and expect the message "Display name is required" in the body.
-3. Then Phase 4, donations. Decisions needed before the first donations file: the item condition values, how photos are stored during development (object storage provider is an outstanding decision), and whether PostGIS is installed for nearby discovery.
+1. One-time setup by the project owner: setx UMEED_DB_PASSWORD with the umeed_app password, then open a new command window.
+2. From H:\Project\Umeed run: ship "Switch to feature batches: ship script, API tests, master instructions 3.0". Report the last lines of the output. If the build fails, show the error.
+3. Next batch, B02, donations part 2 (needs APPROVE): CategoryService.isActiveCategory; DonationService (create with photos, feed, view one); DonationController; photo serving endpoint; upload limits in application.properties; SecurityConfig rule making the feed, a single donation and photos readable without login (to be confirmed with the project owner); automated tests.
+4. Later batches: nearby-first feed sorting; my donations, edit and remove; claims; pickup with address and phone reveal; reports; then the mobile app.
 
 How to get a Firebase ID token for testing (all in cmd; the Web API Key, the token and passwords must not be pasted to the AI):
 
@@ -819,7 +880,6 @@ How to get a Firebase ID token for testing (all in cmd; the Web API Key, the tok
 
 Open points:
 
-* The project owner has not granted a standing approval for index-only updates.
 * The AI's shell on the PC cannot start because of low disk space on the PC, so commands are run by the project owner and pasted back.
 * The AI's own environment cannot reach Maven Central, so it cannot check dependency names or versions itself.
 * When the AI rewrites a file and transfers it immediately, the transfer can pick up the previous version. The AI waits before transferring and checks the file size on disk after every write.
@@ -896,6 +956,19 @@ Earlier session, 2026-11-09:
 
 ---
 
+# 12A. HOW WE WORK (FROM 2026-11-15)
+
+The one-file-at-a-time workflow was replaced by feature batches at the project owner's request. The full rules are in section 5 of UMEED_MASTER_INSTRUCTIONS.md (version 3.0). In short:
+
+* The AI proposes one feature batch as a short plan. The project owner approves once. The AI writes all the files, including automated tests.
+* Migrations and anything touching security rules or private data are shown in full before they are written.
+* The project owner verifies with one command from the project root: ship "commit message". It runs the build and all tests and, only if they pass, commits everything and pushes.
+* UMEED_DB_PASSWORD is set once with setx, so it no longer has to be typed in every window.
+* Standing approval: the AI updates this index after each batch without asking and reports what changed. Changes to the master instructions still need explicit approval.
+* Manual checks are requested only when a test cannot cover something.
+
+---
+
 # 13. INSTRUCTIONS FOR RESUMING DEVELOPMENT
 
 At the beginning of every new AI session:
@@ -906,9 +979,9 @@ At the beginning of every new AI session:
 4. Check Git status.
 5. Verify installed technologies where relevant.
 6. Compare actual project files with this index.
-7. Identify the last completed file.
-8. Explain current progress.
-9. Propose exactly one next file.
+7. Identify the last completed batch.
+8. Explain current progress briefly.
+9. Propose the next feature batch as a short plan.
 10. Wait for my explicit approval.
 
 Never recreate completed files.
@@ -923,16 +996,16 @@ The project index is the navigation and progress record.
 
 # 14. MANDATORY DEVELOPMENT WORKFLOW
 
-PROPOSE ONE FILE.
+PROPOSE ONE BATCH AS A SHORT PLAN.
 
 WAIT FOR APPROVAL.
 
-CREATE ONE FILE.
+WRITE THE BATCH WITH ITS TESTS.
 
-VERIFY ONE FILE.
+VERIFY ONCE WITH ship.
 
-UPDATE PROJECT INDEX WITH APPROVAL.
+UPDATE THE PROJECT INDEX.
 
-STOP AND WAIT.
+REPORT BRIEFLY AND STOP.
 
 This rule applies throughout the entire Umeed project.
