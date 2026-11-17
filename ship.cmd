@@ -1,5 +1,6 @@
 @echo off
-rem Runs the backend build and tests. Only if they pass, commits everything and pushes.
+rem Runs the backend build and tests, then the mobile app's type check and tests.
+rem Only if all of them pass, commits everything and pushes.
 rem Usage (from the project root):  ship "commit message"
 setlocal
 
@@ -21,6 +22,15 @@ set BUILD_RESULT=%ERRORLEVEL%
 popd
 
 if not "%BUILD_RESULT%"=="0" goto build_failed
+
+echo.
+echo ===== Mobile app: type check and tests =====
+pushd "%~dp0apps\mobile" || exit /b 1
+call npx tsc --noEmit
+if errorlevel 1 goto mobile_failed
+call npx jest --ci
+if errorlevel 1 goto mobile_failed
+popd
 
 pushd "%~dp0" || exit /b 1
 git add -A
@@ -48,6 +58,12 @@ exit /b 0
 :build_failed
 echo.
 echo ===== BUILD FAILED. Nothing was committed. =====
+exit /b 1
+
+:mobile_failed
+popd
+echo.
+echo ===== MOBILE CHECK FAILED (type check or tests). Nothing was committed. =====
 exit /b 1
 
 :commit_failed
