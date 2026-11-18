@@ -82,3 +82,7 @@ coverage/
 *.sql.gz
 *.dump
 pgdata/
+
+# ---------- Firebase service-account keys (F02): never commit ----------
+*firebase-adminsdk*.json
+umeed-firebase-key*.json

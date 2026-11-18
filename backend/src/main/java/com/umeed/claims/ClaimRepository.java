@@ -51,6 +51,10 @@ interface ClaimRepository extends JpaRepository<Claim, UUID> {
             @Param("newStatus") Claim.Status newStatus,
             @Param("now") Instant now);
 
+    @Query("select c.claimantId from Claim c where c.donationId = :donationId and c.status = :status")
+    List<UUID> findClaimantIdsByDonationIdAndStatus(
+            @Param("donationId") UUID donationId, @Param("status") Claim.Status status);
+
     /** True when this user holds a claim with the given status on one of the donations. */
     boolean existsByClaimantIdAndStatusAndDonationIdIn(
             UUID claimantId, Claim.Status status, Collection<UUID> donationIds);

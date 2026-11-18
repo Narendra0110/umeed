@@ -20,6 +20,7 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.umeed.app",
+      "permissions": ["android.permission.POST_NOTIFICATIONS"],
       "googleServicesFile": "./google-services.json"
     },
     "web": {
@@ -60,7 +61,8 @@
             "cmakeVersion": "4.1.2"
           }
         }
-      ]
+      ],
+      "@react-native-firebase/messaging"
     ],
     "experiments": {
       "typedRoutes": true,

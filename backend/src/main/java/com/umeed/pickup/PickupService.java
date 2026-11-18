@@ -6,6 +6,7 @@ import com.umeed.donations.DonationService;
 import com.umeed.users.UserContact;
 import com.umeed.users.UserResponse;
 import com.umeed.users.UserService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,11 +21,17 @@ public class PickupService {
     private final DonationService donationService;
     private final ClaimService claimService;
     private final UserService userService;
+    private final ApplicationEventPublisher eventPublisher;
 
-    PickupService(DonationService donationService, ClaimService claimService, UserService userService) {
+    PickupService(
+            DonationService donationService,
+            ClaimService claimService,
+            UserService userService,
+            ApplicationEventPublisher eventPublisher) {
         this.donationService = donationService;
         this.claimService = claimService;
         this.userService = userService;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -48,7 +55,18 @@ public class PickupService {
         DonationPickupDetails donation = donationService.lockForPickup(donationId);
         UUID receiverId = requireParty(caller.id(), donation);
         boolean byDonor = donation.donorId().equals(caller.id());
+        boolean alreadyConfirmed = byDonor ? donation.donorConfirmed() : donation.receiverConfirmed();
         DonationPickupDetails updated = donationService.confirmHandover(donationId, byDonor);
+        boolean otherConfirmed = byDonor ? updated.receiverConfirmed() : updated.donorConfirmed();
+        // Ask the other side to confirm only on a first confirmation; the second one completes the item.
+        if (!alreadyConfirmed && !otherConfirmed) {
+            eventPublisher.publishEvent(new HandoverConfirmedEvent(
+                    donationId,
+                    updated.title(),
+                    caller.id(),
+                    caller.displayName(),
+                    byDonor ? receiverId : donation.donorId()));
+        }
         return toResponse(updated, receiverId);
     }
 
@@ -60,10 +78,12 @@ public class PickupService {
     public void cancel(String firebaseUid, UUID donationId) {
         UserResponse caller = userService.requireActiveUser(firebaseUid);
         DonationPickupDetails donation = donationService.lockForPickup(donationId);
-        requireParty(caller.id(), donation);
+        UUID receiverId = requireParty(caller.id(), donation);
         boolean byReceiver = !donation.donorId().equals(caller.id());
         donationService.reopen(donationId);
         claimService.cancelAccepted(donationId, byReceiver);
+        eventPublisher.publishEvent(new PickupCancelledEvent(
+                donationId, donation.title(), caller.id(), byReceiver ? donation.donorId() : receiverId));
     }
 
     /**

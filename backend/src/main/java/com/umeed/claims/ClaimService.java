@@ -7,6 +7,7 @@ import com.umeed.donations.DonationSummary;
 import com.umeed.users.BlockedUsers;
 import com.umeed.users.UserResponse;
 import com.umeed.users.UserService;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -33,16 +34,19 @@ public class ClaimService {
     private final UserService userService;
     private final DonationService donationService;
     private final BlockedUsers blockedUsers;
+    private final ApplicationEventPublisher eventPublisher;
 
     ClaimService(
             ClaimRepository claimRepository,
             UserService userService,
             DonationService donationService,
-            BlockedUsers blockedUsers) {
+            BlockedUsers blockedUsers,
+            ApplicationEventPublisher eventPublisher) {
         this.claimRepository = claimRepository;
         this.userService = userService;
         this.donationService = donationService;
         this.blockedUsers = blockedUsers;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -70,6 +74,8 @@ public class ClaimService {
         } catch (DataIntegrityViolationException e) {
             throw alreadyClaimed();
         }
+        eventPublisher.publishEvent(new ClaimSubmittedEvent(
+                donationId, donation.title(), donation.donorId(), claimant.id(), claimant.displayName()));
         return ClaimResponse.from(claim, donation.title(), donation.status(), claimant.displayName());
     }
 
@@ -116,9 +122,13 @@ public class ClaimService {
         if (claimRepository.changeStatus(claimId, Claim.Status.PENDING, Claim.Status.ACCEPTED, now) == 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This claim is no longer pending");
         }
+        List<UUID> notChosen = claimRepository.findClaimantIdsByDonationIdAndStatus(donationId, Claim.Status.PENDING);
         claimRepository.changeStatusForDonation(donationId, Claim.Status.PENDING, Claim.Status.REJECTED, now);
 
-        return toResponse(reload(claimId), donation);
+        Claim accepted = reload(claimId);
+        eventPublisher.publishEvent(new ClaimAcceptedEvent(
+                donationId, donation.title(), donation.donorId(), accepted.getClaimantId(), List.copyOf(notChosen)));
+        return toResponse(accepted, donation);
     }
 
     /**

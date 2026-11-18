@@ -58,6 +58,12 @@
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
+		<!-- F02: signs requests to Firebase Cloud Messaging with the service-account key. -->
+		<dependency>
+			<groupId>com.google.auth</groupId>
+			<artifactId>google-auth-library-oauth2-http</artifactId>
+			<version>1.48.0</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.postgresql</groupId>

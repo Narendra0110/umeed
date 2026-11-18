@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 
+import { PushBanner } from '@/components/push-banner';
 import { ApiError } from '@/lib/api';
 
 function shouldRetry(failureCount: number, error: unknown) {
@@ -34,6 +35,7 @@ export default function RootLayout() {
         <Stack.Screen name="blocked" options={{ title: 'Blocked people' }} />
         <Stack.Screen name="delete-account" options={{ title: 'Delete account' }} />
       </Stack>
+      <PushBanner />
     </QueryClientProvider>
   );
 }

@@ -3,6 +3,7 @@ package com.umeed.account;
 import com.umeed.blocks.BlockService;
 import com.umeed.claims.ClaimService;
 import com.umeed.donations.DonationService;
+import com.umeed.notifications.DeviceService;
 import com.umeed.users.UserResponse;
 import com.umeed.users.UserService;
 import org.springframework.stereotype.Service;
@@ -18,22 +19,26 @@ public class AccountService {
     private final DonationService donationService;
     private final ClaimService claimService;
     private final BlockService blockService;
+    private final DeviceService deviceService;
 
     AccountService(
             UserService userService,
             DonationService donationService,
             ClaimService claimService,
-            BlockService blockService) {
+            BlockService blockService,
+            DeviceService deviceService) {
         this.userService = userService;
         this.donationService = donationService;
         this.claimService = claimService;
         this.blockService = blockService;
+        this.deviceService = deviceService;
     }
 
     /**
      * Deletes the caller's account in one transaction. Refused while the caller has a pickup in progress,
      * as donor or as receiver. Otherwise: pending claims are withdrawn and claim messages erased, available
-     * listings are removed with their photos, every pickup address is erased, blocks are removed, and the
+     * listings are removed with their photos, every pickup address is erased, blocks and phones (notification
+     * tokens) are removed, and the
      * user's Firebase id, phone number and name are cleared. Reports the user filed are kept for moderation.
      */
     @Transactional
@@ -42,6 +47,7 @@ public class AccountService {
         claimService.eraseClaimant(caller.id());
         donationService.eraseDonor(caller.id());
         blockService.removeAllInvolving(caller.id());
+        deviceService.removeAllFor(caller.id());
         userService.markDeleted(caller.id());
     }
 }

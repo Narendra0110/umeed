@@ -3,6 +3,7 @@ import { NativeTabs } from 'expo-router/native-tabs';
 
 import { colors, Loading } from '@/components/ui';
 import { useAuthUser } from '@/lib/auth';
+import { usePushNotifications } from '@/lib/push';
 
 /** The four main tabs. Only reachable while logged in. */
 export default function TabsLayout() {
@@ -16,6 +17,8 @@ export default function TabsLayout() {
   }
 
   return (
+    <>
+    <PushNotifications />
     <NativeTabs tintColor={colors.primary}>
       <NativeTabs.Trigger name="feed">
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
@@ -34,5 +37,12 @@ export default function TabsLayout() {
         <NativeTabs.Trigger.Icon sf={{ default: 'person', selected: 'person.fill' }} md="person" />
       </NativeTabs.Trigger>
     </NativeTabs>
+    </>
   );
+}
+
+/** Notifications start once the user is past login and profile setup, so the server knows them. */
+function PushNotifications() {
+  usePushNotifications();
+  return null;
 }

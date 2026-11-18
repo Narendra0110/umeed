@@ -2,6 +2,8 @@ import { getAuth, signOut } from '@react-native-firebase/auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 
+import { unregisterDevice } from './push';
+
 /**
  * Headers for loading photos. Photos are private to logged-in users, so the image component must
  * send the Firebase token too. Firebase tokens last one hour; this refreshes the copy every 30 minutes.
@@ -23,6 +25,8 @@ export function useAuthHeaders(): Record<string, string> | undefined {
 export function useLogOut() {
   const queryClient = useQueryClient();
   return async () => {
+    // While still logged in, so the server accepts it. Never blocks logging out.
+    await unregisterDevice();
     await signOut(getAuth());
     queryClient.clear();
     router.replace('/login');
