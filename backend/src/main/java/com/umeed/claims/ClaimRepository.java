@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -49,6 +50,40 @@ interface ClaimRepository extends JpaRepository<Claim, UUID> {
             @Param("expected") Claim.Status expected,
             @Param("newStatus") Claim.Status newStatus,
             @Param("now") Instant now);
+
+    /** True when this user holds a claim with the given status on one of the donations. */
+    boolean existsByClaimantIdAndStatusAndDonationIdIn(
+            UUID claimantId, Claim.Status status, Collection<UUID> donationIds);
+
+    @Query("select c.donationId from Claim c where c.claimantId = :claimantId and c.status = :status")
+    List<UUID> findDonationIdsByClaimantIdAndStatus(
+            @Param("claimantId") UUID claimantId, @Param("status") Claim.Status status);
+
+    /** Changes one user's claims on the given donations that currently have the expected status. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update Claim c set c.status = :newStatus, c.updatedAt = :now "
+            + "where c.claimantId = :claimantId and c.donationId in :donationIds and c.status = :expected")
+    int changeStatusForClaimantOn(
+            @Param("claimantId") UUID claimantId,
+            @Param("donationIds") Collection<UUID> donationIds,
+            @Param("expected") Claim.Status expected,
+            @Param("newStatus") Claim.Status newStatus,
+            @Param("now") Instant now);
+
+    /** Changes every claim of one user that currently has the expected status. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update Claim c set c.status = :newStatus, c.updatedAt = :now "
+            + "where c.claimantId = :claimantId and c.status = :expected")
+    int changeStatusForClaimant(
+            @Param("claimantId") UUID claimantId,
+            @Param("expected") Claim.Status expected,
+            @Param("newStatus") Claim.Status newStatus,
+            @Param("now") Instant now);
+
+    /** Erases the messages a user wrote with their claims. Used by account deletion. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update Claim c set c.message = null where c.claimantId = :claimantId")
+    int clearMessages(@Param("claimantId") UUID claimantId);
 
     /**
      * Like changeStatusForDonation, but only for claims whose last change happened at exactly the given moment.

@@ -58,6 +58,28 @@ public class UserService {
     }
 
     /**
+     * True when the user exists and their account is active.
+     */
+    @Transactional(readOnly = true)
+    public boolean isActiveUser(UUID userId) {
+        return userRepository.findById(userId)
+                .map(user -> user.getStatus() == User.Status.ACTIVE)
+                .orElse(false);
+    }
+
+    /**
+     * For account deletion: erases the user's identity (Firebase id, phone number and name).
+     * The caller must already have removed or closed everything else that belongs to the user.
+     */
+    @Transactional
+    public void markDeleted(UUID userId) {
+        userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"))
+                .markDeleted();
+        userRepository.flush();
+    }
+
+    /**
      * Returns display names for the given user ids. Users without a name get a neutral placeholder.
      */
     @Transactional(readOnly = true)

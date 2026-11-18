@@ -1,10 +1,22 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
 
-import { Body, Button, colors, ErrorBanner, ErrorState, Field, Loading, Screen, Title } from '@/components/ui';
+import {
+  Body,
+  Button,
+  colors,
+  ErrorBanner,
+  ErrorState,
+  Field,
+  LinkButton,
+  Loading,
+  Screen,
+  Title,
+} from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
 import { useProfile, useUpdateDisplayName } from '@/lib/profile';
 import { useLogOut } from '@/lib/session';
@@ -54,7 +66,11 @@ export default function ProfileScreen() {
         <Text style={styles.value}>{profile.data.phoneNumber}</Text>
         <Body>Your phone number is shown only to the person you hand an item to, or receive one from.</Body>
       </View>
+      <Button title="Blocked people" variant="secondary" onPress={() => router.push('/blocked')} />
       <Button title="Log out" variant="secondary" onPress={confirmLogOut} />
+      <View style={styles.danger}>
+        <LinkButton title="Delete my account" color={colors.error} onPress={() => router.push('/delete-account')} />
+      </View>
     </Screen>
   );
 }
@@ -126,4 +142,5 @@ const styles = StyleSheet.create({
   info: { gap: 8 },
   label: { fontSize: 14, fontWeight: '600', color: colors.muted },
   value: { fontSize: 20, color: colors.text },
+  danger: { marginTop: 16, alignItems: 'center' },
 });

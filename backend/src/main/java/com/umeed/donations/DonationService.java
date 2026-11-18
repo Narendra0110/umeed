@@ -3,6 +3,7 @@ package com.umeed.donations;
 import com.umeed.categories.CategoryService;
 import com.umeed.common.PageResponse;
 import com.umeed.storage.FileStorage;
+import com.umeed.users.BlockedUsers;
 import com.umeed.users.UserResponse;
 import com.umeed.users.UserService;
 import org.slf4j.Logger;
@@ -13,6 +14,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -46,6 +49,7 @@ public class DonationService {
     private final CategoryService categoryService;
     private final ApplicationEventPublisher eventPublisher;
     private final ClaimedDonations claimedDonations;
+    private final BlockedUsers blockedUsers;
 
     DonationService(
             DonationRepository donationRepository,
@@ -54,7 +58,8 @@ public class DonationService {
             UserService userService,
             CategoryService categoryService,
             ApplicationEventPublisher eventPublisher,
-            ClaimedDonations claimedDonations) {
+            ClaimedDonations claimedDonations,
+            BlockedUsers blockedUsers) {
         this.donationRepository = donationRepository;
         this.donationImageRepository = donationImageRepository;
         this.fileStorage = fileStorage;
@@ -62,6 +67,7 @@ public class DonationService {
         this.categoryService = categoryService;
         this.eventPublisher = eventPublisher;
         this.claimedDonations = claimedDonations;
+        this.blockedUsers = blockedUsers;
     }
 
     /**
@@ -116,14 +122,15 @@ public class DonationService {
     }
 
     /**
-     * The feed: available donations the caller can claim, newest first. The caller's own donations
-     * and the ones they have already claimed (in any claim status) are left out.
+     * The feed: available donations the caller can claim, newest first. The caller's own donations,
+     * the ones they have already claimed (in any claim status) and the items of people blocked
+     * either way are left out.
      */
     @Transactional(readOnly = true)
     public PageResponse<DonationResponse> listFeed(String firebaseUid, Pageable pageable) {
         UserResponse caller = userService.requireActiveUser(firebaseUid);
         Page<Donation> page = donationRepository.findClaimableNewestFirst(
-                caller.id(), alreadyClaimedBy(caller.id()), pageable);
+                caller.id(), alreadyClaimedBy(caller.id()), hiddenDonorsFor(caller.id()), pageable);
         return PageResponse.of(toResponses(page));
     }
 
@@ -135,7 +142,8 @@ public class DonationService {
             String firebaseUid, double latitude, double longitude, Pageable pageable) {
         UserResponse caller = userService.requireActiveUser(firebaseUid);
         Page<Donation> page = donationRepository.findClaimableNearestFirst(
-                caller.id(), alreadyClaimedBy(caller.id()), latitude, longitude, pageable);
+                caller.id(), alreadyClaimedBy(caller.id()), hiddenDonorsFor(caller.id()),
+                latitude, longitude, pageable);
         return PageResponse.of(toResponses(page));
     }
 
@@ -146,6 +154,12 @@ public class DonationService {
     private Set<UUID> alreadyClaimedBy(UUID userId) {
         Set<UUID> claimed = claimedDonations.donationIdsClaimedBy(userId);
         return claimed.isEmpty() ? Set.of(NO_DONATION) : claimed;
+    }
+
+    /** Donors whose items the caller must not see. Same placeholder rule as alreadyClaimedBy. */
+    private Set<UUID> hiddenDonorsFor(UUID userId) {
+        Set<UUID> blocked = blockedUsers.blockedEitherWay(userId);
+        return blocked.isEmpty() ? Set.of(NO_DONATION) : blocked;
     }
 
     /**
@@ -272,6 +286,89 @@ public class DonationService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Only a reserved donation can be cancelled");
         }
         donation.reopen();
+    }
+
+    /**
+     * The ids of every donation this donor posted, in any status. Used to close claims after a block.
+     */
+    @Transactional(readOnly = true)
+    public List<UUID> idsByDonor(UUID donorId) {
+        return donationRepository.findIdsByDonorId(donorId);
+    }
+
+    /**
+     * The ids of this donor's reserved donations, that is, the ones with a pickup in progress.
+     */
+    @Transactional(readOnly = true)
+    public List<UUID> reservedIdsByDonor(UUID donorId) {
+        return donationRepository.findIdsByDonorIdAndStatus(donorId, Donation.Status.RESERVED);
+    }
+
+    /**
+     * Account deletion, donor side. Refused while one of the donor's items is reserved. Otherwise:
+     * available listings are removed (their open claims are closed through the usual event), every
+     * pickup address is erased, and the photos of all removed listings are deleted. Photos of items
+     * already handed over stay, because they belong to the receiver's history too.
+     * The rows stay locked until the caller's transaction ends, so no claim can be accepted meanwhile.
+     */
+    @Transactional
+    public void eraseDonor(UUID donorId) {
+        List<Donation> donations = donationRepository.findAllForUpdateByDonorId(donorId);
+        for (Donation donation : donations) {
+            if (donation.getStatus() == Donation.Status.RESERVED) {
+                throw pickupInProgress();
+            }
+        }
+        List<UUID> newlyRemovedIds = new ArrayList<>();
+        List<UUID> removedIds = new ArrayList<>();
+        for (Donation donation : donations) {
+            if (donation.getStatus() == Donation.Status.AVAILABLE) {
+                donation.markRemoved();
+                newlyRemovedIds.add(donation.getId());
+            }
+            if (donation.getStatus() == Donation.Status.REMOVED) {
+                removedIds.add(donation.getId());
+            }
+            donation.erasePickupAddress();
+        }
+        // Saved before the events: their listeners run bulk updates that detach loaded entities.
+        donationRepository.flush();
+        for (UUID donationId : newlyRemovedIds) {
+            eventPublisher.publishEvent(new DonationRemovedEvent(donationId));
+        }
+        if (!removedIds.isEmpty()) {
+            List<DonationImage> images =
+                    donationImageRepository.findByDonationIdInOrderByDonationIdAscSortOrderAsc(removedIds);
+            List<String> keys = images.stream().map(DonationImage::getStorageKey).toList();
+            donationImageRepository.deleteAllInBatch(images);
+            deleteFilesAfterCommit(keys);
+        }
+    }
+
+    /** The error used whenever an account cannot be deleted because of an unfinished pickup. */
+    public static ResponseStatusException pickupInProgress() {
+        return new ResponseStatusException(
+                HttpStatus.CONFLICT, "Finish or cancel your pickups before deleting your account");
+    }
+
+    /**
+     * Files are deleted only once the database change is saved, so a failed deletion never leaves
+     * listings pointing at missing photos.
+     */
+    private void deleteFilesAfterCommit(List<String> keys) {
+        if (keys.isEmpty()) {
+            return;
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            deleteQuietly(keys);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                deleteQuietly(keys);
+            }
+        });
     }
 
     private Donation lockExisting(UUID donationId) {

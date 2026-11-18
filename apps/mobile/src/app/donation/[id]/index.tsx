@@ -6,6 +6,7 @@ import { ClaimSheet } from '@/components/claim-sheet';
 import { PhotoCarousel } from '@/components/photos';
 import { Body, Button, colors, EmptyState, ErrorState, LinkButton, Loading, Pill, Screen } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
+import { confirmBlock, useBlockUser } from '@/lib/blocks';
 import { useDonation, useRemoveDonation } from '@/lib/donations';
 import { conditionLabels, distanceKm, donationStatusLabels, formatDistance, timeAgo } from '@/lib/format';
 import { useCurrentLocation } from '@/lib/location';
@@ -22,6 +23,7 @@ export default function DonationScreen() {
   const profile = useProfile(true);
   const location = useCurrentLocation();
   const remove = useRemoveDonation();
+  const block = useBlockUser();
   const { width } = useWindowDimensions();
   const [claimOpen, setClaimOpen] = useState(false);
   const [claimed, setClaimed] = useState(false);
@@ -142,6 +144,17 @@ export default function DonationScreen() {
             title="Report this listing"
             color={colors.muted}
             onPress={() => router.push(`/donation/${item.id}/report`)}
+          />
+          <LinkButton
+            title={`Block ${item.donorName}`}
+            color={colors.muted}
+            onPress={() =>
+              confirmBlock(
+                item.donorName,
+                (handlers) => block.mutate(item.donorId, handlers),
+                () => router.back(),
+              )
+            }
           />
         </View>
       )}

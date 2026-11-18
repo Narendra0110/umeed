@@ -67,6 +67,18 @@ public class User {
         this.displayName = displayName.strip();
     }
 
+    /**
+     * Erases the person's identity. The row stays so that items and claims that point at it remain valid,
+     * but nothing in it can identify them. The same phone number can register again as a new account.
+     */
+    void markDeleted() {
+        this.firebaseUid = null;
+        this.phoneNumber = null;
+        this.displayName = null;
+        this.status = Status.DELETED;
+        this.deletedAt = Instant.now();
+    }
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();

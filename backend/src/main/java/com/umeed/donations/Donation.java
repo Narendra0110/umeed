@@ -58,7 +58,8 @@ public class Donation {
     @Column(nullable = false)
     private double longitude;
 
-    @Column(name = "pickup_address", nullable = false, length = 500)
+    /** Private. Null only after the donor deleted their account. */
+    @Column(name = "pickup_address", length = 500)
     private String pickupAddress;
 
     @Column(name = "donor_confirmed_at")
@@ -136,6 +137,11 @@ public class Donation {
         status = Status.AVAILABLE;
         donorConfirmedAt = null;
         receiverConfirmedAt = null;
+    }
+
+    /** The donor deleted their account: their private pickup address is erased. */
+    void erasePickupAddress() {
+        pickupAddress = null;
     }
 
     @PrePersist

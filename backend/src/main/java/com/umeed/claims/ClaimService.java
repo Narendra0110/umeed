@@ -4,6 +4,7 @@ import com.umeed.common.PageResponse;
 import com.umeed.donations.DonationRemovedEvent;
 import com.umeed.donations.DonationService;
 import com.umeed.donations.DonationSummary;
+import com.umeed.users.BlockedUsers;
 import com.umeed.users.UserResponse;
 import com.umeed.users.UserService;
 import org.springframework.context.event.EventListener;
@@ -31,11 +32,17 @@ public class ClaimService {
     private final ClaimRepository claimRepository;
     private final UserService userService;
     private final DonationService donationService;
+    private final BlockedUsers blockedUsers;
 
-    ClaimService(ClaimRepository claimRepository, UserService userService, DonationService donationService) {
+    ClaimService(
+            ClaimRepository claimRepository,
+            UserService userService,
+            DonationService donationService,
+            BlockedUsers blockedUsers) {
         this.claimRepository = claimRepository;
         this.userService = userService;
         this.donationService = donationService;
+        this.blockedUsers = blockedUsers;
     }
 
     /**
@@ -50,6 +57,9 @@ public class ClaimService {
         DonationSummary donation = donationService.lockClaimable(donationId);
         if (donation.donorId().equals(claimant.id())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot claim your own donation");
+        }
+        if (blockedUsers.isBlockedEitherWay(claimant.id(), donation.donorId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot claim this item");
         }
         if (claimRepository.existsByDonationIdAndClaimantId(donationId, claimant.id())) {
             throw alreadyClaimed();
@@ -191,6 +201,63 @@ public class ClaimService {
     public void onDonationRemoved(DonationRemovedEvent event) {
         claimRepository.changeStatusForDonation(
                 event.donationId(), Claim.Status.PENDING, Claim.Status.REJECTED, Instant.now());
+    }
+
+    // ----- For the blocks module -----
+
+    /**
+     * True when the two users have a pickup in progress together: a reserved item of one of them
+     * whose accepted claim belongs to the other.
+     */
+    @Transactional(readOnly = true)
+    public boolean sharePickup(UUID userId, UUID otherUserId) {
+        return hasAcceptedClaimOn(otherUserId, donationService.reservedIdsByDonor(userId))
+                || hasAcceptedClaimOn(userId, donationService.reservedIdsByDonor(otherUserId));
+    }
+
+    /**
+     * After a block, the open claims between the two users are closed: the blocked person's claims on the
+     * blocker's items are rejected, and the blocker's own claims on the blocked person's items are withdrawn.
+     */
+    @Transactional
+    public void closeClaimsAfterBlock(UUID blockerId, UUID blockedId) {
+        Instant now = Instant.now();
+        List<UUID> blockerItems = donationService.idsByDonor(blockerId);
+        if (!blockerItems.isEmpty()) {
+            claimRepository.changeStatusForClaimantOn(
+                    blockedId, blockerItems, Claim.Status.PENDING, Claim.Status.REJECTED, now);
+        }
+        List<UUID> blockedItems = donationService.idsByDonor(blockedId);
+        if (!blockedItems.isEmpty()) {
+            claimRepository.changeStatusForClaimantOn(
+                    blockerId, blockedItems, Claim.Status.PENDING, Claim.Status.WITHDRAWN, now);
+        }
+    }
+
+    // ----- For account deletion -----
+
+    /**
+     * Account deletion, claimant side. Withdraws every pending claim first, so none can be accepted
+     * afterwards, then refuses if the user is the receiver of an item that is still reserved.
+     * Finally erases the messages the user wrote.
+     */
+    @Transactional
+    public void eraseClaimant(UUID claimantId) {
+        claimRepository.changeStatusForClaimant(
+                claimantId, Claim.Status.PENDING, Claim.Status.WITHDRAWN, Instant.now());
+        List<UUID> acceptedOn = claimRepository.findDonationIdsByClaimantIdAndStatus(claimantId, Claim.Status.ACCEPTED);
+        for (DonationSummary donation : donationService.summariesByIds(acceptedOn).values()) {
+            if ("RESERVED".equals(donation.status())) {
+                throw DonationService.pickupInProgress();
+            }
+        }
+        claimRepository.clearMessages(claimantId);
+    }
+
+    private boolean hasAcceptedClaimOn(UUID claimantId, List<UUID> donationIds) {
+        return !donationIds.isEmpty()
+                && claimRepository.existsByClaimantIdAndStatusAndDonationIdIn(
+                        claimantId, Claim.Status.ACCEPTED, donationIds);
     }
 
     private Claim reload(UUID claimId) {

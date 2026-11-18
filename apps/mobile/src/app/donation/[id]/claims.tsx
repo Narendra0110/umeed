@@ -2,8 +2,9 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { ListRow } from '@/components/list-row';
-import { Body, Button, colors, EmptyState, ErrorState, Loading, Pill, Title } from '@/components/ui';
+import { Body, Button, colors, EmptyState, ErrorState, LinkButton, Loading, Pill, Title } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
+import { confirmBlock, useBlockUser } from '@/lib/blocks';
 import { useAcceptClaim, useDonationClaims } from '@/lib/claims';
 import { useDonation } from '@/lib/donations';
 import { timeAgo } from '@/lib/format';
@@ -22,6 +23,7 @@ export default function DonationClaimsScreen() {
   const donation = useDonation(id);
   const claims = useDonationClaims(id);
   const accept = useAcceptClaim();
+  const block = useBlockUser();
 
   if (donation.isPending || claims.isPending) {
     return <Loading />;
@@ -104,16 +106,23 @@ export default function DonationClaimsScreen() {
             />
           }
           actions={
-            available && item.status === 'PENDING' ? (
-              <View style={styles.flex}>
+            <View style={styles.flex}>
+              {available && item.status === 'PENDING' ? (
                 <Button
                   title={`Give to ${item.claimantName}`}
                   loading={accept.isPending && accept.variables === item.id}
                   disabled={accept.isPending}
                   onPress={() => confirmAccept(item)}
                 />
-              </View>
-            ) : undefined
+              ) : null}
+              <LinkButton
+                title={`Block ${item.claimantName}`}
+                color={colors.muted}
+                onPress={() =>
+                  confirmBlock(item.claimantName, (handlers) => block.mutate(item.claimantId, handlers))
+                }
+              />
+            </View>
           }
         />
       )}
@@ -123,7 +132,7 @@ export default function DonationClaimsScreen() {
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.background },
-  flex: { flex: 1 },
+  flex: { flex: 1, gap: 8 },
   list: { padding: 16, gap: 10, flexGrow: 1 },
   header: { gap: 10, marginBottom: 8 },
 });
