@@ -21,7 +21,7 @@ interface NeedOfferRepository extends JpaRepository<NeedOffer, UUID> {
     /** Oldest first; offers made in the same instant are ordered by id, so the order never changes. */
     List<NeedOffer> findByNeedIdOrderByCreatedAtAscIdAsc(UUID needId);
 
-    Page<NeedOffer> findByDonorIdOrderByCreatedAtDesc(UUID donorId, Pageable pageable);
+    Page<NeedOffer> findByDonorIdOrderByCreatedAtDescIdDesc(UUID donorId, Pageable pageable);
 
     @Query("select o.donorId from NeedOffer o where o.needId = :needId and o.status = :status")
     List<UUID> findDonorIdsByNeedIdAndStatus(@Param("needId") UUID needId, @Param("status") NeedOffer.Status status);

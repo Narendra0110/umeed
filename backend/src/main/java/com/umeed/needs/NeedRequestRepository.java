@@ -25,7 +25,7 @@ interface NeedRequestRepository extends JpaRepository<NeedRequest, UUID> {
             where n.status = com.umeed.needs.NeedRequest.Status.OPEN
               and n.requesterId <> :callerId
               and n.requesterId not in :hiddenRequesters
-            order by n.createdAt desc
+            order by n.createdAt desc, n.id desc
             """)
     Page<NeedRequest> findOpenNewestFirst(
             @Param("callerId") UUID callerId,
@@ -42,7 +42,7 @@ interface NeedRequestRepository extends JpaRepository<NeedRequest, UUID> {
             ORDER BY 6371 * acos(LEAST(1.0, GREATEST(-1.0,
                          cos(radians(:lat)) * cos(radians(n.latitude)) * cos(radians(n.longitude) - radians(:lng))
                          + sin(radians(:lat)) * sin(radians(n.latitude))))) ASC,
-                     n.created_at DESC
+                     n.created_at DESC, n.id DESC
             """,
             countQuery = """
             SELECT count(*) FROM need_requests n
@@ -56,7 +56,7 @@ interface NeedRequestRepository extends JpaRepository<NeedRequest, UUID> {
             @Param("lng") double longitude,
             Pageable pageable);
 
-    Page<NeedRequest> findByRequesterIdOrderByCreatedAtDesc(UUID requesterId, Pageable pageable);
+    Page<NeedRequest> findByRequesterIdOrderByCreatedAtDescIdDesc(UUID requesterId, Pageable pageable);
 
     /** Loads a need and locks its row until the transaction ends, so two offers cannot be accepted at once. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)

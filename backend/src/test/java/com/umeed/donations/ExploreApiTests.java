@@ -20,6 +20,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -137,7 +138,8 @@ class ExploreApiTests {
         String bag = postItem("Blue school bag " + word, categoryA, "Indore", "22.75", "75.89");
         String shoes = postItem("Red school shoes " + word, categoryB, "Delhi", "28.60", "77.20");
 
-        assertEquals(List.of(shoes, bag), search("q=" + word));
+        // Both are posted within the same moment, so their newest-first order is not checked here.
+        assertEquals(Set.of(shoes, bag), Set.copyOf(search("q=" + word)));
         // Words in order, anything between them, any letter case.
         String twoWords = mockMvc.perform(get("/api/v1/donations/search").param("q", "BAG " + word).with(seeker()))
                 .andExpect(status().isOk())

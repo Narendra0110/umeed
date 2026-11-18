@@ -23,7 +23,7 @@ interface ClaimRepository extends JpaRepository<Claim, UUID> {
     /** Oldest first. Two claims made at the same instant are ordered by id, so the order never changes between calls. */
     List<Claim> findByDonationIdOrderByCreatedAtAscIdAsc(UUID donationId);
 
-    Page<Claim> findByClaimantIdOrderByCreatedAtDesc(UUID claimantId, Pageable pageable);
+    Page<Claim> findByClaimantIdOrderByCreatedAtDescIdDesc(UUID claimantId, Pageable pageable);
 
     Optional<Claim> findFirstByDonationIdAndStatus(UUID donationId, Claim.Status status);
 

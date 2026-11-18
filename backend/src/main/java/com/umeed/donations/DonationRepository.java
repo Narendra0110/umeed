@@ -28,7 +28,7 @@ interface DonationRepository extends JpaRepository<Donation, UUID> {
               and d.donorId <> :callerId
               and d.id not in :excluded
               and d.donorId not in :hiddenDonors
-            order by d.createdAt desc
+            order by d.createdAt desc, d.id desc
             """)
     Page<Donation> findClaimableNewestFirst(
             @Param("callerId") UUID callerId,
@@ -49,7 +49,7 @@ interface DonationRepository extends JpaRepository<Donation, UUID> {
 
     Page<Donation> findByDonorIdOrderByCreatedAtDesc(UUID donorId, Pageable pageable);
 
-    Page<Donation> findByDonorIdAndStatusNotOrderByCreatedAtDesc(UUID donorId, Donation.Status status, Pageable pageable);
+    Page<Donation> findByDonorIdAndStatusNotOrderByCreatedAtDescIdDesc(UUID donorId, Donation.Status status, Pageable pageable);
 
     /**
      * The feed for one user, nearest to the given point first, then newest first. Same filter as
@@ -66,7 +66,7 @@ interface DonationRepository extends JpaRepository<Donation, UUID> {
             ORDER BY 6371 * acos(LEAST(1.0, GREATEST(-1.0,
                          cos(radians(:lat)) * cos(radians(d.latitude)) * cos(radians(d.longitude) - radians(:lng))
                          + sin(radians(:lat)) * sin(radians(d.latitude))))) ASC,
-                     d.created_at DESC
+                     d.created_at DESC, d.id DESC
             """,
             countQuery = """
             SELECT count(*) FROM donations d
@@ -97,7 +97,7 @@ interface DonationRepository extends JpaRepository<Donation, UUID> {
               AND (d.title ILIKE :text OR d.description ILIKE :text)
               AND (:categoryId = '' OR CAST(d.category_id AS text) = :categoryId)
               AND d.city ILIKE :city
-            ORDER BY d.created_at DESC
+            ORDER BY d.created_at DESC, d.id DESC
             """,
             countQuery = """
             SELECT count(*) FROM donations d
@@ -137,7 +137,7 @@ interface DonationRepository extends JpaRepository<Donation, UUID> {
             ORDER BY 6371 * acos(LEAST(1.0, GREATEST(-1.0,
                          cos(radians(:lat)) * cos(radians(d.latitude)) * cos(radians(d.longitude) - radians(:lng))
                          + sin(radians(:lat)) * sin(radians(d.latitude))))) ASC,
-                     d.created_at DESC
+                     d.created_at DESC, d.id DESC
             """,
             countQuery = """
             SELECT count(*) FROM donations d

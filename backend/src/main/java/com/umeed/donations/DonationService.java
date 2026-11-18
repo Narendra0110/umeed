@@ -227,7 +227,7 @@ public class DonationService {
     @Transactional(readOnly = true)
     public PageResponse<DonationResponse> listMine(String firebaseUid, Pageable pageable) {
         UserResponse donor = userService.requireActiveUser(firebaseUid);
-        Page<Donation> page = donationRepository.findByDonorIdAndStatusNotOrderByCreatedAtDesc(
+        Page<Donation> page = donationRepository.findByDonorIdAndStatusNotOrderByCreatedAtDescIdDesc(
                 donor.id(), Donation.Status.REMOVED, pageable);
         return PageResponse.of(toResponses(page));
     }

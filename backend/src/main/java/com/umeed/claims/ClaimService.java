@@ -203,7 +203,7 @@ public class ClaimService {
     @Transactional(readOnly = true)
     public PageResponse<ClaimResponse> listMine(String firebaseUid, Pageable pageable) {
         UserResponse caller = userService.requireActiveUser(firebaseUid);
-        Page<Claim> page = claimRepository.findByClaimantIdOrderByCreatedAtDesc(caller.id(), pageable);
+        Page<Claim> page = claimRepository.findByClaimantIdOrderByCreatedAtDescIdDesc(caller.id(), pageable);
         Set<UUID> donationIds = new HashSet<>();
         for (Claim claim : page.getContent()) {
             donationIds.add(claim.getDonationId());

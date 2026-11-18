@@ -102,7 +102,7 @@ public class NeedService {
     @Transactional(readOnly = true)
     public PageResponse<NeedResponse> listMine(String firebaseUid, Pageable pageable) {
         UserResponse caller = userService.requireActiveUser(firebaseUid);
-        Page<NeedRequest> page = needRepository.findByRequesterIdOrderByCreatedAtDesc(caller.id(), pageable);
+        Page<NeedRequest> page = needRepository.findByRequesterIdOrderByCreatedAtDescIdDesc(caller.id(), pageable);
         return PageResponse.of(toResponses(page, caller.id()));
     }
 
@@ -186,7 +186,7 @@ public class NeedService {
     @Transactional(readOnly = true)
     public PageResponse<OfferResponse> listMyOffers(String firebaseUid, Pageable pageable) {
         UserResponse caller = userService.requireActiveUser(firebaseUid);
-        Page<NeedOffer> page = offerRepository.findByDonorIdOrderByCreatedAtDesc(caller.id(), pageable);
+        Page<NeedOffer> page = offerRepository.findByDonorIdOrderByCreatedAtDescIdDesc(caller.id(), pageable);
         Set<UUID> needIds = new HashSet<>();
         page.getContent().forEach(offer -> needIds.add(offer.getNeedId()));
         Map<UUID, NeedRequest> needs = new HashMap<>();
