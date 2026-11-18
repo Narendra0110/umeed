@@ -4,8 +4,9 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Tex
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ClaimSheet } from '@/components/claim-sheet';
+import { NeedsList } from '@/components/needs-list';
 import { PhotoCarousel } from '@/components/photos';
-import { Button, colors, EmptyState, ErrorState, LinkButton, Loading, Pill } from '@/components/ui';
+import { Button, colors, EmptyState, ErrorState, LinkButton, Loading, Pill, Segmented } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { useFeed } from '@/lib/donations';
 import { conditionLabels, type Coordinates, distanceKm, formatDistance } from '@/lib/format';
@@ -16,7 +17,8 @@ import type { Donation } from '@/lib/types';
 const NOTICE_MS = 3500;
 
 /**
- * Home: one donated item per screen (section 2B of the project index). Swiping up moves to the
+ * Home has two views: Items (below) and Needs (what people nearby asked for, see NeedsList).
+ * Items: one donated item per screen (section 2B of the project index). Swiping up moves to the
  * next item. Nearby items come first when location is allowed. Skipped items are not remembered.
  * The server sends only items the user can claim: never their own, never ones they already claimed.
  * After a claim the feed refreshes, the item drops out and the next one takes its place.
@@ -28,6 +30,7 @@ export default function FeedScreen() {
   const [height, setHeight] = useState(0);
   const [claiming, setClaiming] = useState<Donation | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [view, setView] = useState<'items' | 'needs'>('items');
 
   useEffect(() => {
     if (!notice) {
@@ -92,12 +95,22 @@ export default function FeedScreen() {
           <Text style={styles.locationHint}>Nearest first</Text>
         ) : null}
       </View>
+      <View style={styles.switch}>
+        <Segmented
+          choices={[
+            { value: 'items', label: 'Items' },
+            { value: 'needs', label: 'Needs' },
+          ]}
+          value={view}
+          onChange={setView}
+        />
+      </View>
       {notice ? (
         <View style={styles.notice} accessibilityRole="alert" accessibilityLiveRegion="polite">
           <Text style={styles.noticeText}>{notice}</Text>
         </View>
       ) : null}
-      {content}
+      {view === 'items' ? content : <NeedsList near={coords} locationReady={!location.isPending} />}
       {claiming ? (
         <ClaimSheet
           visible
@@ -175,6 +188,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   brand: { fontSize: 24, fontWeight: '800', color: colors.primary },
+  switch: { paddingHorizontal: 16, paddingBottom: 8 },
   locationHint: { flexShrink: 1, fontSize: 13, color: colors.muted, textAlign: 'right' },
   footer: { padding: 24 },
   post: { backgroundColor: colors.background },

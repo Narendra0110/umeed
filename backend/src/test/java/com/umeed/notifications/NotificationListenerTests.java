@@ -38,7 +38,7 @@ class NotificationListenerTests {
         NotificationListener listener = new NotificationListener(dispatcher, blockedUsers);
 
         listener.onClaimAccepted(new ClaimAcceptedEvent(
-                UUID.randomUUID(), "Lamp", donor, receiver, List.of(blockedClaimant, otherClaimant)));
+                UUID.randomUUID(), "Lamp", donor, receiver, List.of(blockedClaimant, otherClaimant), true));
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<Notice>> captor = ArgumentCaptor.forClass(List.class);

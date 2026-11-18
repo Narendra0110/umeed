@@ -4,6 +4,7 @@ import com.umeed.blocks.BlockService;
 import com.umeed.chat.ChatService;
 import com.umeed.claims.ClaimService;
 import com.umeed.donations.DonationService;
+import com.umeed.needs.NeedService;
 import com.umeed.notifications.DeviceService;
 import com.umeed.users.UserResponse;
 import com.umeed.users.UserService;
@@ -22,6 +23,7 @@ public class AccountService {
     private final BlockService blockService;
     private final DeviceService deviceService;
     private final ChatService chatService;
+    private final NeedService needService;
 
     AccountService(
             UserService userService,
@@ -29,8 +31,10 @@ public class AccountService {
             ClaimService claimService,
             BlockService blockService,
             DeviceService deviceService,
-            ChatService chatService) {
+            ChatService chatService,
+            NeedService needService) {
         this.chatService = chatService;
+        this.needService = needService;
         this.userService = userService;
         this.donationService = donationService;
         this.claimService = claimService;
@@ -40,7 +44,8 @@ public class AccountService {
 
     /**
      * Deletes the caller's account in one transaction. Refused while the caller has a pickup in progress,
-     * as donor or as receiver. Otherwise: pending claims are withdrawn and claim messages erased, available
+     * as donor or as receiver. Otherwise: pending claims are withdrawn and claim messages erased, open
+     * needs are closed and waiting offers withdrawn, available
      * listings are removed with their photos, every pickup address is erased, blocks, phones (notification
      * tokens) and the user's chat messages are removed, and the
      * user's Firebase id, phone number and name are cleared. Reports the user filed are kept for moderation.
@@ -49,6 +54,7 @@ public class AccountService {
     public void deleteAccount(String firebaseUid) {
         UserResponse caller = userService.requireActiveUser(firebaseUid);
         claimService.eraseClaimant(caller.id());
+        needService.eraseUser(caller.id());
         donationService.eraseDonor(caller.id());
         blockService.removeAllInvolving(caller.id());
         deviceService.removeAllFor(caller.id());

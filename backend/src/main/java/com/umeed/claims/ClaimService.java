@@ -124,13 +124,59 @@ public class ClaimService {
         if (claimRepository.changeStatus(claimId, Claim.Status.PENDING, Claim.Status.ACCEPTED, now) == 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "This claim is no longer pending");
         }
+        Claim accepted = finishAcceptance(donation, claimId, now, true);
+        return toResponse(accepted, donation);
+    }
+
+    /**
+     * For the needs module: the person who asked chose a donor's offer. In one transaction the item is
+     * reserved for them through an accepted claim (created if they had none on this item), exactly as if
+     * the donor had accepted their claim, so pickup details, chat and confirmations work as usual.
+     * Refused with 409 when the item is no longer available. Returns the accepted claim's id.
+     */
+    @Transactional
+    public UUID acceptForNeed(UUID donationId, UUID donorId, UUID requesterId) {
+        if (blockedUsers.isBlockedEitherWay(requesterId, donorId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot accept this offer");
+        }
+        // Locks the donation first, as accept() does; the offer's donor is the item's donor.
+        DonationSummary donation = donationService.reserve(donationId, donorId);
+        Instant now = Instant.now();
+        Optional<Claim> existing = claimRepository.findByDonationIdAndClaimantId(donationId, requesterId);
+        UUID claimId;
+        Claim.Status expected;
+        if (existing.isPresent()) {
+            // An earlier claim of theirs on this item (any status): the donor's offer overrides it.
+            claimId = existing.get().getId();
+            expected = existing.get().getStatus();
+        } else {
+            claimId = claimRepository.saveAndFlush(Claim.create(donationId, requesterId, null)).getId();
+            expected = Claim.Status.PENDING;
+        }
+        if (claimRepository.changeStatus(claimId, expected, Claim.Status.ACCEPTED, now) == 0) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This item is no longer available");
+        }
+        finishAcceptance(donation, claimId, now, false);
+        return claimId;
+    }
+
+    /**
+     * The common end of an acceptance: every other pending claim is rejected with the same timestamp
+     * (cancelAccepted relies on it) and the people involved are told.
+     */
+    private Claim finishAcceptance(DonationSummary donation, UUID claimId, Instant now, boolean notifyReceiver) {
+        UUID donationId = donation.id();
         List<UUID> notChosen = claimRepository.findClaimantIdsByDonationIdAndStatus(donationId, Claim.Status.PENDING);
         claimRepository.changeStatusForDonation(donationId, Claim.Status.PENDING, Claim.Status.REJECTED, now);
-
         Claim accepted = reload(claimId);
         eventPublisher.publishEvent(new ClaimAcceptedEvent(
-                donationId, donation.title(), donation.donorId(), accepted.getClaimantId(), List.copyOf(notChosen)));
-        return toResponse(accepted, donation);
+                donationId,
+                donation.title(),
+                donation.donorId(),
+                accepted.getClaimantId(),
+                List.copyOf(notChosen),
+                notifyReceiver));
+        return accepted;
     }
 
     /**

@@ -42,6 +42,12 @@ describe('notificationRoute', () => {
     expect(notificationRoute({ donationId: DONATION, claimId: 'x', screen: 'chat' })).toBe(`/donation/${DONATION}`);
   });
 
+  it('opens a need for offers', () => {
+    const needId = '1c1d2e3f-4a5b-4c6d-8e7f-0a1b2c3d4e5f';
+    expect(notificationRoute({ needId, screen: 'need' })).toBe(`/need/${needId}`);
+    expect(notificationRoute({ needId: 'bad', screen: 'need' })).toBeNull();
+  });
+
   it('ignores missing or malformed data', () => {
     expect(notificationRoute(undefined)).toBeNull();
     expect(notificationRoute({ screen: 'pickup' })).toBeNull();

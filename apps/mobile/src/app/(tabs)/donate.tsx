@@ -1,10 +1,22 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Body, Button, ChoiceChips, colors, ErrorBanner, Field, Loading, Screen, Title } from '@/components/ui';
+import { NeedForm } from '@/components/need-form';
+import {
+  Body,
+  Button,
+  ChoiceChips,
+  colors,
+  ErrorBanner,
+  Field,
+  Loading,
+  Screen,
+  Segmented,
+  Title,
+} from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
 import { useCategories, useCreateDonation } from '@/lib/donations';
 import { conditionLabels } from '@/lib/format';
@@ -27,8 +39,24 @@ const emptyForm: DonationFormValues = {
 
 const conditionChoices = ITEM_CONDITIONS.map((value) => ({ value, label: conditionLabels[value] }));
 
-/** Donate: post an item with photos. The pickup address stays private until a receiver is chosen. */
+/** Donate has two forms: give an item, or ask for something you need. */
 export default function DonateScreen() {
+  const [mode, setMode] = useState<'give' | 'ask'>('give');
+  const header = (
+    <Segmented
+      choices={[
+        { value: 'give', label: 'Give an item' },
+        { value: 'ask', label: 'Ask for something' },
+      ]}
+      value={mode}
+      onChange={setMode}
+    />
+  );
+  return mode === 'give' ? <GiveItemForm header={header} /> : <NeedForm header={header} />;
+}
+
+/** Post an item with photos. The pickup address stays private until a receiver is chosen. */
+function GiveItemForm({ header }: { header: ReactNode }) {
   'use no memo';
   const categories = useCategories();
   const location = useCurrentLocation();
@@ -101,6 +129,7 @@ export default function DonateScreen() {
 
   return (
     <Screen scroll edges={['top', 'left', 'right']}>
+      {header}
       <Title>Give an item</Title>
       <Body>Umeed is free. Never ask for or accept money for an item.</Body>
 

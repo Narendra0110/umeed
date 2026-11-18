@@ -3,6 +3,8 @@ package com.umeed.notifications;
 import com.umeed.chat.ChatMessageSentEvent;
 import com.umeed.claims.ClaimAcceptedEvent;
 import com.umeed.claims.ClaimSubmittedEvent;
+import com.umeed.needs.NeedOfferAcceptedEvent;
+import com.umeed.needs.NeedOfferMadeEvent;
 import com.umeed.pickup.HandoverConfirmedEvent;
 import com.umeed.pickup.PickupCancelledEvent;
 import com.umeed.users.BlockedUsers;
@@ -25,6 +27,7 @@ class NotificationListener {
     static final String SCREEN_CLAIMS = "claims";
     static final String SCREEN_PICKUP = "pickup";
     static final String SCREEN_CHAT = "chat";
+    static final String SCREEN_NEED = "need";
 
     private final PushDispatcher pushDispatcher;
     private final BlockedUsers blockedUsers;
@@ -47,12 +50,14 @@ class NotificationListener {
     @EventListener
     void onClaimAccepted(ClaimAcceptedEvent event) {
         List<Notice> notices = new ArrayList<>();
-        notices.add(notice(
-                event.receiverId(),
-                "“" + event.donationTitle() + "” is yours!",
-                "Open Umeed for the pickup details.",
-                event.donationId(),
-                SCREEN_PICKUP));
+        if (event.notifyReceiver()) {
+            notices.add(notice(
+                    event.receiverId(),
+                    "“" + event.donationTitle() + "” is yours!",
+                    "Open Umeed for the pickup details.",
+                    event.donationId(),
+                    SCREEN_PICKUP));
+        }
         for (UUID notChosen : event.notChosenIds()) {
             notices.add(notice(
                     notChosen,
@@ -84,6 +89,34 @@ class NotificationListener {
                 SCREEN_PICKUP)));
     }
 
+    @EventListener
+    void onNeedOfferMade(NeedOfferMadeEvent event) {
+        send(event.donorId(), List.of(needNotice(
+                event.requesterId(),
+                "New offer for “" + event.needTitle() + "”",
+                nameOrDefault(event.donorName()) + " offered “" + event.donationTitle() + "”. Open Umeed to choose.",
+                event.needId())));
+    }
+
+    @EventListener
+    void onNeedOfferAccepted(NeedOfferAcceptedEvent event) {
+        List<Notice> notices = new ArrayList<>();
+        notices.add(notice(
+                event.donorId(),
+                nameOrDefault(event.requesterName()) + " chose your “" + event.donationTitle() + "”",
+                "Open Umeed for the pickup details.",
+                event.donationId(),
+                SCREEN_PICKUP));
+        for (UUID declined : event.declinedDonorIds()) {
+            notices.add(needNotice(
+                    declined,
+                    "Another offer was chosen for “" + event.needTitle() + "”",
+                    "Thank you for offering. Your item is still listed for others.",
+                    event.needId()));
+        }
+        send(event.requesterId(), notices);
+    }
+
     /** The message text is never included: it may contain an address, and notifications pass through Google. */
     @EventListener
     void onChatMessageSent(ChatMessageSentEvent event) {
@@ -108,6 +141,10 @@ class NotificationListener {
 
     private static Notice notice(UUID userId, String title, String body, UUID donationId, String screen) {
         return new Notice(userId, title, body, Map.of("donationId", donationId.toString(), "screen", screen));
+    }
+
+    private static Notice needNotice(UUID userId, String title, String body, UUID needId) {
+        return new Notice(userId, title, body, Map.of("needId", needId.toString(), "screen", SCREEN_NEED));
     }
 
     private static String nameOrDefault(String name) {

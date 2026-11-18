@@ -22,6 +22,9 @@ export function notificationRoute(data: NotificationData): string | null {
   if (data?.screen === 'chat' && isId(data.claimId)) {
     return `/chat/${data.claimId}`;
   }
+  if (data?.screen === 'need' && isId(data.needId)) {
+    return `/need/${data.needId}`;
+  }
   const donationId = isId(data?.donationId) ? data.donationId : null;
   if (!donationId) {
     return null;
@@ -116,6 +119,7 @@ export function usePushNotifications() {
       void queryClient.invalidateQueries({ queryKey: ['donations'] });
       void queryClient.invalidateQueries({ queryKey: ['pickup'] });
       void queryClient.invalidateQueries({ queryKey: ['chat'] });
+      void queryClient.invalidateQueries({ queryKey: ['needs'] });
       showBanner({
         title: message.notification?.title ?? 'Umeed',
         body: message.notification?.body ?? '',

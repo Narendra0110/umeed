@@ -99,6 +99,46 @@ export type Conversation = {
   unreadCount: number;
 };
 
+export type NeedStatus = 'OPEN' | 'FULFILLED' | 'CLOSED';
+
+/** Something a person asked for. `pendingOfferCount` is set only for the person who asked. */
+export type Need = {
+  id: string;
+  title: string;
+  description: string;
+  status: NeedStatus;
+  categoryId: string;
+  city: string;
+  area: string;
+  latitude: number;
+  longitude: number;
+  requesterId: string;
+  requesterName: string;
+  pendingOfferCount: number | null;
+  createdAt: string;
+};
+
+export type OfferStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'WITHDRAWN';
+
+/** A donor's offer of one of their items for a need. `donationStatus` says if the item is still available. */
+export type Offer = {
+  id: string;
+  needId: string;
+  needTitle: string;
+  donationId: string;
+  donationTitle: string;
+  donationStatus: DonationStatus | null;
+  donationImageUrl: string | null;
+  donorId: string;
+  donorName: string;
+  message: string | null;
+  status: OfferStatus;
+  createdAt: string;
+};
+
+/** After choosing an offer: the item is reserved for the person who asked. */
+export type AcceptedOffer = { donationId: string; claimId: string };
+
 export const REPORT_REASONS = [
   'SELLING_OR_ASKING_MONEY',
   'PROHIBITED_ITEM',

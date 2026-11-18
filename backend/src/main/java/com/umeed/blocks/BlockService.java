@@ -1,6 +1,7 @@
 package com.umeed.blocks;
 
 import com.umeed.claims.ClaimService;
+import com.umeed.needs.NeedService;
 import com.umeed.users.UserResponse;
 import com.umeed.users.UserService;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -19,16 +20,22 @@ public class BlockService {
     private final UserBlockRepository userBlockRepository;
     private final UserService userService;
     private final ClaimService claimService;
+    private final NeedService needService;
 
-    BlockService(UserBlockRepository userBlockRepository, UserService userService, ClaimService claimService) {
+    BlockService(
+            UserBlockRepository userBlockRepository,
+            UserService userService,
+            ClaimService claimService,
+            NeedService needService) {
         this.userBlockRepository = userBlockRepository;
         this.userService = userService;
         this.claimService = claimService;
+        this.needService = needService;
     }
 
     /**
-     * The caller blocks another user. From now on neither sees or claims the other's items, and the
-     * open claims between them are closed. Refused while they share a pickup. Blocking twice changes nothing.
+     * The caller blocks another user. From now on neither sees or claims the other's items or needs, and the
+     * open claims and waiting offers between them are closed. Refused while they share a pickup. Blocking twice changes nothing.
      */
     @Transactional
     public void block(String firebaseUid, UUID userId) {
@@ -53,6 +60,7 @@ public class BlockService {
             return;
         }
         claimService.closeClaimsAfterBlock(caller.id(), userId);
+        needService.closeOffersAfterBlock(caller.id(), userId);
     }
 
     /**

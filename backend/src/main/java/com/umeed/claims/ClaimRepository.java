@@ -18,6 +18,8 @@ interface ClaimRepository extends JpaRepository<Claim, UUID> {
 
     boolean existsByDonationIdAndClaimantId(UUID donationId, UUID claimantId);
 
+    Optional<Claim> findByDonationIdAndClaimantId(UUID donationId, UUID claimantId);
+
     /** Oldest first. Two claims made at the same instant are ordered by id, so the order never changes between calls. */
     List<Claim> findByDonationIdOrderByCreatedAtAscIdAsc(UUID donationId);
 

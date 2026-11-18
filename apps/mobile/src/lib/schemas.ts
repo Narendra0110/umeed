@@ -45,6 +45,24 @@ export const donationSchema = z.object({
 export type DonationFormValues = z.input<typeof donationSchema>;
 export type DonationInput = z.output<typeof donationSchema>;
 
+/** Asking for something (CreateNeedRequest): like an item, without photos, condition or address. */
+export const needSchema = z.object({
+  title: donationSchema.shape.title,
+  description: donationSchema.shape.description,
+  categoryId: donationSchema.shape.categoryId,
+  city: donationSchema.shape.city,
+  area: donationSchema.shape.area,
+});
+export type NeedFormValues = z.input<typeof needSchema>;
+export type NeedInput = z.output<typeof needSchema>;
+
+/** Offering an item for a need (CreateOfferRequest). */
+export const offerSchema = z.object({
+  donationId: z.string().min(1, 'Choose one of your items'),
+  message: z.string().trim().max(300, 'Message must be at most 300 characters'),
+});
+export type OfferFormValues = z.infer<typeof offerSchema>;
+
 export const claimSchema = z.object({
   message: z.string().trim().max(300, 'Message must be at most 300 characters'),
 });

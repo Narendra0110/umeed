@@ -9,11 +9,12 @@ import { errorMessage } from '@/lib/api';
 import { useMyClaims, useWithdrawClaim } from '@/lib/claims';
 import { useMyDonations } from '@/lib/donations';
 import { claimStatusLabels, donationStatusLabels, groupMyClaims, groupMyDonations, timeAgo } from '@/lib/format';
-import type { Claim, ClaimStatus, Donation, DonationStatus } from '@/lib/types';
+import { needStatusLabels, offerStatusLabels, useMyNeeds, useMyOffers, useWithdrawOffer } from '@/lib/needs';
+import type { Claim, ClaimStatus, Donation, DonationStatus, Need, Offer } from '@/lib/types';
 
-type Tab = 'donations' | 'claims';
+type Tab = 'donations' | 'claims' | 'needs';
 
-/** Activity: the items I gave and the items I claimed, grouped by what needs doing next. */
+/** Activity: the items I gave, the items I claimed, and my needs and offers, grouped by what needs doing next. */
 export default function ActivityScreen() {
   const [tab, setTab] = useState<Tab>('donations');
 
@@ -25,12 +26,13 @@ export default function ActivityScreen() {
           choices={[
             { value: 'donations', label: 'My donations' },
             { value: 'claims', label: 'My claims' },
+            { value: 'needs', label: 'Needs' },
           ]}
           value={tab}
           onChange={setTab}
         />
       </View>
-      {tab === 'donations' ? <MyDonations /> : <MyClaims />}
+      {tab === 'donations' ? <MyDonations /> : tab === 'claims' ? <MyClaims /> : <MyNeedsAndOffers />}
     </SafeAreaView>
   );
 }
@@ -192,6 +194,131 @@ function MyClaims() {
         />
         );
       }}
+    />
+  );
+}
+
+type NeedsRow = { kind: 'need'; need: Need } | { kind: 'offer'; offer: Offer };
+
+/** What I asked for (my needs) and what I offered for other people's needs. */
+function MyNeedsAndOffers() {
+  const needs = useMyNeeds();
+  const offers = useMyOffers();
+  const withdraw = useWithdrawOffer();
+
+  if (needs.isPending || offers.isPending) {
+    return <Loading />;
+  }
+  if (needs.isError || offers.isError) {
+    return (
+      <ErrorState
+        message={errorMessage(needs.error ?? offers.error)}
+        onRetry={() => {
+          needs.refetch();
+          offers.refetch();
+        }}
+        retrying={needs.isFetching || offers.isFetching}
+      />
+    );
+  }
+  const myNeeds = needs.data.pages.flatMap((page) => page.items);
+  const myOffers = offers.data.pages.flatMap((page) => page.items);
+  if (myNeeds.length === 0 && myOffers.length === 0) {
+    return (
+      <EmptyState
+        title="No needs or offers yet"
+        message="Ask for something you need, or offer one of your items for what someone nearby needs."
+        action={<Button title="Ask for something" onPress={() => router.navigate('/donate')} />}
+      />
+    );
+  }
+
+  const sections: { title: string; data: NeedsRow[] }[] = [];
+  if (myNeeds.length > 0) {
+    sections.push({ title: 'What I asked for', data: myNeeds.map((need) => ({ kind: 'need', need })) });
+  }
+  if (myOffers.length > 0) {
+    sections.push({ title: 'What I offered', data: myOffers.map((offer) => ({ kind: 'offer', offer })) });
+  }
+
+  const confirmWithdraw = (offer: Offer) =>
+    Alert.alert('Withdraw your offer?', `“${offer.donationTitle}” will no longer be offered for “${offer.needTitle}”.`, [
+      { text: 'Keep offer', style: 'cancel' },
+      {
+        text: 'Withdraw',
+        style: 'destructive',
+        onPress: () =>
+          withdraw.mutate(offer.id, { onError: (error) => Alert.alert('Could not withdraw', errorMessage(error)) }),
+      },
+    ]);
+
+  return (
+    <SectionList
+      sections={sections}
+      keyExtractor={(row) => (row.kind === 'need' ? `need-${row.need.id}` : `offer-${row.offer.id}`)}
+      contentContainerStyle={styles.list}
+      stickySectionHeadersEnabled={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={needs.isRefetching || offers.isRefetching}
+          onRefresh={() => {
+            void needs.refetch();
+            void offers.refetch();
+          }}
+        />
+      }
+      renderSectionHeader={({ section }) => <SectionTitle>{section.title}</SectionTitle>}
+      renderItem={({ item: row }) =>
+        row.kind === 'need' ? (
+          <ListRow
+            title={row.need.title}
+            subtitle={`${row.need.area}, ${row.need.city} · ${timeAgo(row.need.createdAt)}`}
+            extra={
+              <Pill
+                label={
+                  row.need.status === 'OPEN' && row.need.pendingOfferCount
+                    ? `${row.need.pendingOfferCount} offer${row.need.pendingOfferCount === 1 ? '' : 's'} waiting`
+                    : needStatusLabels[row.need.status]
+                }
+                tone={row.need.status === 'OPEN' ? (row.need.pendingOfferCount ? 'info' : 'success') : 'neutral'}
+              />
+            }
+            onPress={() => router.push(`/need/${row.need.id}`)}
+          />
+        ) : (
+          <ListRow
+            title={`${row.offer.donationTitle} for “${row.offer.needTitle}”`}
+            subtitle={timeAgo(row.offer.createdAt)}
+            imagePath={row.offer.donationImageUrl ?? undefined}
+            extra={
+              <Pill
+                label={offerStatusLabels[row.offer.status]}
+                tone={row.offer.status === 'ACCEPTED' ? 'success' : row.offer.status === 'PENDING' ? 'info' : 'neutral'}
+              />
+            }
+            onPress={() => router.push(`/need/${row.offer.needId}`)}
+            actions={
+              row.offer.status === 'PENDING' ? (
+                <View style={styles.flex}>
+                  <Button
+                    title="Withdraw offer"
+                    variant="secondary"
+                    loading={withdraw.isPending && withdraw.variables === row.offer.id}
+                    onPress={() => confirmWithdraw(row.offer)}
+                  />
+                </View>
+              ) : row.offer.status === 'ACCEPTED' ? (
+                <View style={styles.flex}>
+                  <Button
+                    title="Pickup details"
+                    onPress={() => router.push(`/donation/${row.offer.donationId}/pickup`)}
+                  />
+                </View>
+              ) : undefined
+            }
+          />
+        )
+      }
     />
   );
 }

@@ -4,7 +4,7 @@ Version: 2.0
 
 Last updated: 2026-11-17
 
-Project status: MOBILE APP RUNS ON A REAL ANDROID PHONE (2026-11-18); THE MAIN MVP FLOW (LOGIN, POST, CLAIM, ACCEPT, PICKUP, BOTH CONFIRMATIONS) WORKS END TO END; EVERY MVP FLOW TESTED ON THE PHONE; LAST SHIPPED COMMIT df214cc (F01, 2026-11-18) – PLAN: BUILD THE WHOLE APP (F01–F07), THEN HOST – F01 SHIPPED (PHONE TEST LATER) – F02 PUSH NOTIFICATIONS SHIPPED 5b448a1 (PHONE TEST LATER) – F03 CHAT WRITTEN AND TESTED, WAITING FOR SHIP – NEXT: PROPOSE F04 NEED REQUESTS AND OFFERS
+Project status: MOBILE APP RUNS ON A REAL ANDROID PHONE (2026-11-18); THE MAIN MVP FLOW (LOGIN, POST, CLAIM, ACCEPT, PICKUP, BOTH CONFIRMATIONS) WORKS END TO END; EVERY MVP FLOW TESTED ON THE PHONE; LAST SHIPPED COMMIT df214cc (F01, 2026-11-18) – PLAN: BUILD THE WHOLE APP (F01–F07), THEN HOST – F01 SHIPPED (PHONE TEST LATER) – F02 PUSH NOTIFICATIONS SHIPPED 5b448a1 (PHONE TEST LATER) – F03 CHAT SHIPPED 949d2a1 (PHONE TEST LATER) – F04 NEED REQUESTS AND OFFERS WRITTEN AND TESTED, WAITING FOR SHIP – NEXT: PROPOSE F05 EXPLORE
 
 Project folder: H:\Project\Umeed
 
@@ -695,7 +695,8 @@ From 2026-11-15 work is tracked by feature batch, not by file number.
 | M02   | The rest of the MVP screens: four tabs (Home feed, Donate, Activity, Profile), item details, claims on my item, pickup details, report a listing; photo, location and test libraries; first mobile tests; ship.cmd runs the mobile type check and tests. Approved 2026-11-17. | WRITTEN, NOT YET BUILT ON A DEVICE |
 | F01   | Delete account and block a user: V9__create_user_blocks.sql; account module; blocks module; BlockedUsers interface in users; feed and claim changes; delete-account and blocked screens; BlockApiTests, AccountDeletionApiTests, account-and-blocks.test.ts. Approved 2026-11-18. | SHIPPED df214cc, PHONE TEST PENDING |
 | F02   | Push notifications: V10__create_device_tokens.sql; notifications module (device tokens, FCM sender, after-commit dispatcher, listener); four events from claims and pickup; lib/push.ts and push banner; messaging and Google auth libraries; NotificationApiTests, PushDispatcherTests, NotificationListenerTests, push.test.ts. Approved 2026-11-18. | SHIPPED 5b448a1; PHONE TEST PENDING (NEEDS APP REBUILD) |
-| F03   | In-app chat: V11__create_chat_messages.sql; chat module; ClaimParties and claimId in pickup details; chat notification; Chats tab and chat screen; ChatApiTests, chat.test.ts. Approved 2026-11-18. | WRITTEN AND TESTED, NOT YET SHIPPED |
+| F03   | In-app chat: V11__create_chat_messages.sql; chat module; ClaimParties and claimId in pickup details; chat notification; Chats tab and chat screen; ChatApiTests, chat.test.ts. Approved 2026-11-18. | SHIPPED 949d2a1; PHONE TEST PENDING |
+| F04   | Need requests and offers: V12__create_need_requests_and_offers.sql; needs module; ClaimService.acceptForNeed; block, account and notification additions; Items/Needs on Home, Ask for something on Donate, need and offer screens, Needs view in Activity; NeedApiTests, needs.test.ts. Approved 2026-11-18. | WRITTEN AND TESTED, NOT YET SHIPPED |
 
 Notes:
 
@@ -879,6 +880,16 @@ As of 2026-11-15, all verified by hand:
 | GET    | /api/v1/claims/{claimId}/messages | Firebase token needed | One conversation, oldest first; ?after={messageId} for newer only. Donor and accepted receiver only (F03). |
 | POST   | /api/v1/claims/{claimId}/messages | Firebase token needed | Send {"body": "..."}, 1 to 1000 characters, only while the pickup is in progress. Answers 201 (F03). |
 | POST   | /api/v1/claims/{claimId}/messages/read | Firebase token needed | Mark the other person's messages as read. Answers 204 (F03). |
+| POST   | /api/v1/needs        | Firebase token needed | Post a need. JSON: categoryId, title, description, city, area, latitude, longitude. Answers 201 (F04). |
+| GET    | /api/v1/needs        | Firebase token needed | Open needs from others (not own, not blocked); ?lat&lng for nearest first; paged (F04). |
+| GET    | /api/v1/needs/mine   | Firebase token needed | The caller's needs in every status, with pendingOfferCount (F04). |
+| GET    | /api/v1/needs/{id}   | Firebase token needed | One need. 404 if unknown or blocked either way (F04). |
+| POST   | /api/v1/needs/{id}/close | Firebase token needed | The person who asked closes it; waiting offers declined (F04). |
+| POST   | /api/v1/needs/{id}/offers | Firebase token needed | Offer one of the caller's AVAILABLE items. Body {"donationId": "...", "message": "..."}. Answers 201 (F04). |
+| GET    | /api/v1/needs/{id}/offers | Firebase token needed | All offers on the need; the person who asked only (F04). |
+| GET    | /api/v1/offers/mine  | Firebase token needed | The caller's offers, newest first, paged (F04). |
+| POST   | /api/v1/offers/{id}/accept | Firebase token needed | The person who asked chooses the offer: item reserved for them, need fulfilled. Answers {donationId, claimId} (F04). |
+| POST   | /api/v1/offers/{id}/withdraw | Firebase token needed | The donor withdraws a waiting offer. Answers 204 (F04). |
 
 * Every other address answers 401 without a valid token.
 * The token is sent in the header: Authorization: Bearer followed by the Firebase ID token.
@@ -1065,7 +1076,17 @@ M01 part 1 progress on 2026-11-17:
     * App: Chats tab (5 tabs now; unread badge on the tab, list refreshed every 30 seconds), chat screen /chat/{claimId} (checks every 5 seconds, downloads only newer messages, marks read, read-only notice when closed), "Message {name}" button on Pickup details, notification taps open the chat. lib/chat.ts holds the helpers.
     * Tests: ChatApiTests (4); 61 backend tests passed on 2026-11-18. Mobile chat.test.ts (6) and one more push test; type check no errors; 59 mobile tests passed. Running the tests applied V11 to umeed_dev; it must never be edited.
     * Note for later: typed routes are regenerated only by a running dev server on a FREE port 8081; if an earlier Metro still holds the port, the new one fails silently and tsc reports unknown routes. Read receipts are stored but not shown in the app (polling fetches only newer messages, so they would go stale).
-  * RESUME HERE (2026-11-18): F03 written and tested by the AI, NOT yet shipped. Next: the project owner runs ship "F03: in-app chat", then the AI proposes F04 (need requests and offers) in detail. Phone tests of F01, F02 and F03 are postponed; F02 needs the rebuilt app (run-android), and the tests use two phones or a phone plus the emulator.
+  * F03 shipped on 2026-11-18 as 949d2a1 (ship passed).
+  * Batch F04, approved on 2026-11-18 (migration V12 shown in full first) and written by the AI. V12 (need_requests and need_offers) is exactly the migration that was shown. No new libraries, no native change.
+    * Backend needs module: NeedRequest, NeedOffer, their repositories, CreateNeedRequest, CreateOfferRequest, NeedResponse (pendingOfferCount only for the person who asked), OfferResponse (with donationStatus and first photo), AcceptOfferResponse, NeedService, NeedController, NeedOfferMadeEvent, NeedOfferAcceptedEvent. Needs: OPEN, FULFILLED, CLOSED; location rounded to 2 decimals like items; no address. Offers: PENDING, ACCEPTED, DECLINED, WITHDRAWN; only the donor's own AVAILABLE items; one offer per item per need.
+    * Choosing an offer (POST /api/v1/offers/{id}/accept, person who asked only, need locked): ClaimService.acceptForNeed reserves the item through an accepted claim for the person who asked (creating one, or reusing an earlier claim of theirs on that item), rejects the item's other pending claims exactly like accept(), then the offer is ACCEPTED, the other waiting offers DECLINED and the need FULFILLED. 409 before anything is written if the item is no longer available. Pickup details, chat and both confirmations then work as for any claim. accept() and acceptForNeed share finishAcceptance.
+    * ClaimAcceptedEvent has a new field notifyReceiver (false when the receiver chose an offer themselves).
+    * Removing a listing withdraws its waiting offers (listener on DonationRemovedEvent). Blocking declines or withdraws waiting offers between the two and hides needs both ways (list, nearest list, details 404, offering 403). Account deletion closes the user's open needs (their waiting offers declined) and withdraws the user's waiting offers.
+    * Notifications: new offer to the person who asked (opens the need), offer chosen to the donor (opens pickup), other waiting offers' donors told another was chosen (opens the need); claimants of the item who were not chosen get the usual message.
+    * App: Home has an Items / Needs switch (needs list, nearest first); Donate has Give an item / Ask for something (NeedForm); need screen /need/{id} (offers with Choose, Close, or Offer an item, Block); offer screen /need/{id}/offer (choose one of my available items plus a message); Activity has a third view "Needs" (What I asked for, What I offered, with Withdraw); notification taps open needs. lib/needs.ts holds the helpers.
+    * Tests: NeedApiTests (8); 69 backend tests passed on 2026-11-18, first run. Mobile needs.test.ts (7) and one more push test; type check no errors; 67 mobile tests passed. Running the tests applied V12 to umeed_dev; it must never be edited.
+    * Known limits: the offer screen lists only the first 20 of the donor's items; a need cannot be reported yet (planned with the admin dashboard, F06).
+  * RESUME HERE (2026-11-18): F04 written and tested by the AI, NOT yet shipped. Next: the project owner runs ship "F04: need requests and offers", then the AI proposes F05 (explore: search, filters, map, remembering skipped items) in detail; the map provider is decided then. Phone tests of F01 to F04 are postponed; F02 needs the rebuilt app (run-android), and the tests use two phones or a phone plus the emulator.
   * End of the phone session on 2026-11-18: the USB port-forwarding loop and Metro were stopped so the phone could be unplugged; the backend was left running. The installed app is a development build: it opens only while Metro runs on the PC and the phone is connected (see "How to run it again later" above). Next: connect the phone by USB with USB debugging on, check with adb devices, start the backend, then run-android from apps\mobile (no clean needed; it reuses the built android folder) and do the manual MVP checks.
 * GRADLE_USER_HOME is H:\gradle-cache. C: has only 4.2 GB free. Unused system images on C: could be removed in the Android Studio SDK Manager: android-37.1 (8.2 GB) and android-36.1 (2.8 GB). Pixel_7 uses android-36, which must stay.
 * Then: npx tsc --noEmit; run-android clean (generates the android folder); run-android sha1 and add that SHA-1 to the Firebase Android app, download google-services.json again into apps/mobile; run-android clean again; log in on the emulator with a Firebase test number while the backend runs.
