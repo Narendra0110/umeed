@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -10,21 +10,32 @@ import { errorMessage } from '@/lib/api';
 import { useFeed } from '@/lib/donations';
 import { conditionLabels, type Coordinates, distanceKm, formatDistance } from '@/lib/format';
 import { useCurrentLocation } from '@/lib/location';
-import { useProfile } from '@/lib/profile';
 import type { Donation } from '@/lib/types';
+
+/** How long the "Claimed" banner stays after a claim. */
+const NOTICE_MS = 3500;
 
 /**
  * Home: one donated item per screen (section 2B of the project index). Swiping up moves to the
  * next item. Nearby items come first when location is allowed. Skipped items are not remembered.
+ * The server sends only items the user can claim: never their own, never ones they already claimed.
+ * After a claim the feed refreshes, the item drops out and the next one takes its place.
  */
 export default function FeedScreen() {
   const location = useCurrentLocation();
   const coords = location.data?.coords ?? null;
   const feed = useFeed(coords, !location.isPending);
-  const profile = useProfile(true);
   const [height, setHeight] = useState(0);
-  const [claimed, setClaimed] = useState<ReadonlySet<string>>(new Set());
   const [claiming, setClaiming] = useState<Donation | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!notice) {
+      return;
+    }
+    const timer = setTimeout(() => setNotice(null), NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [notice]);
 
   const items = feed.data?.pages.flatMap((page) => page.items) ?? [];
 
@@ -39,7 +50,7 @@ export default function FeedScreen() {
     content = (
       <EmptyState
         title="Nothing to claim right now"
-        message="New items appear here as people near you give them away. You can also be the first to donate."
+        message="New items appear here as people near you give them away. Your own items and the ones you have claimed are under Activity."
         action={<Button title="Donate an item" onPress={() => router.navigate('/donate')} />}
       />
     );
@@ -61,14 +72,7 @@ export default function FeedScreen() {
               feed.isFetchingNextPage ? <ActivityIndicator style={styles.footer} color={colors.primary} /> : undefined
             }
             renderItem={({ item }) => (
-              <FeedPost
-                donation={item}
-                height={height}
-                near={coords}
-                isMine={item.donorId === profile.data?.id}
-                claimed={claimed.has(item.id)}
-                onClaim={() => setClaiming(item)}
-              />
+              <FeedPost donation={item} height={height} near={coords} onClaim={() => setClaiming(item)} />
             )}
           />
         ) : null}
@@ -88,6 +92,11 @@ export default function FeedScreen() {
           <Text style={styles.locationHint}>Nearest first</Text>
         ) : null}
       </View>
+      {notice ? (
+        <View style={styles.notice} accessibilityRole="alert" accessibilityLiveRegion="polite">
+          <Text style={styles.noticeText}>{notice}</Text>
+        </View>
+      ) : null}
       {content}
       {claiming ? (
         <ClaimSheet
@@ -97,7 +106,7 @@ export default function FeedScreen() {
           donorName={claiming.donorName}
           onClose={() => setClaiming(null)}
           onClaimed={() => {
-            setClaimed((previous) => new Set(previous).add(claiming.id));
+            setNotice(`Claimed “${claiming.title}”. Find it under Activity.`);
             setClaiming(null);
           }}
         />
@@ -110,12 +119,10 @@ type FeedPostProps = {
   donation: Donation;
   height: number;
   near: Coordinates | null;
-  isMine: boolean;
-  claimed: boolean;
   onClaim: () => void;
 };
 
-function FeedPost({ donation, height, near, isMine, claimed, onClaim }: FeedPostProps) {
+function FeedPost({ donation, height, near, onClaim }: FeedPostProps) {
   const [width, setWidth] = useState(0);
   const photoHeight = Math.round(height * 0.58);
   const place = `${donation.area}, ${donation.city}`;
@@ -132,7 +139,6 @@ function FeedPost({ donation, height, near, isMine, claimed, onClaim }: FeedPost
         </Pressable>
         <View style={styles.metaRow}>
           <Pill label={conditionLabels[donation.itemCondition]} tone="info" />
-          {isMine ? <Pill label="Your item" tone="warning" /> : null}
         </View>
         <Text style={styles.meta} numberOfLines={1}>
           {place}
@@ -143,28 +149,14 @@ function FeedPost({ donation, height, near, isMine, claimed, onClaim }: FeedPost
           {donation.description}
         </Text>
         <View style={styles.spacer} />
-        {isMine ? (
-          <Button
-            title="See claims"
-            variant="secondary"
-            onPress={() => router.push(`/donation/${donation.id}/claims`)}
-          />
-        ) : claimed ? (
-          <View style={styles.claimedBox} accessibilityRole="text">
-            <Text style={styles.claimedText}>Claimed. You will find it under Activity.</Text>
-          </View>
-        ) : (
-          <Button title="Claim" onPress={onClaim} />
-        )}
+        <Button title="Claim" onPress={onClaim} />
         <View style={styles.bottomRow}>
           <Text style={styles.swipeHint}>Swipe up for the next item</Text>
-          {!isMine ? (
-            <LinkButton
-              title="Report"
-              color={colors.muted}
-              onPress={() => router.push(`/donation/${donation.id}/report`)}
-            />
-          ) : null}
+          <LinkButton
+            title="Report"
+            color={colors.muted}
+            onPress={() => router.push(`/donation/${donation.id}/report`)}
+          />
         </View>
       </View>
     </View>
@@ -192,15 +184,15 @@ const styles = StyleSheet.create({
   meta: { fontSize: 15, color: colors.muted },
   description: { fontSize: 15, color: colors.text, lineHeight: 21 },
   spacer: { flex: 1 },
-  claimedBox: {
-    minHeight: 52,
+  notice: {
+    marginHorizontal: 16,
+    marginBottom: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderRadius: 12,
     backgroundColor: colors.successBackground,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
   },
-  claimedText: { color: colors.success, fontSize: 15, fontWeight: '600', textAlign: 'center' },
+  noticeText: { color: colors.success, fontSize: 15, fontWeight: '600', textAlign: 'center' },
   bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 32 },
   swipeHint: { fontSize: 13, color: colors.muted },
 });

@@ -44,16 +44,20 @@ class DonationController {
         return donationService.create(jwt.getSubject(), request, photos == null ? List.of() : photos);
     }
 
-    /** The feed. With lat and lng it is sorted nearest first; without them, newest first. */
+    /**
+     * The feed: only items the caller can claim (not their own, not already claimed by them).
+     * With lat and lng it is sorted nearest first; without them, newest first.
+     */
     @GetMapping
     PageResponse<DonationResponse> feed(
+            @AuthenticationPrincipal Jwt jwt,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size,
             @RequestParam(name = "lat", required = false) Double latitude,
             @RequestParam(name = "lng", required = false) Double longitude) {
         PageRequest pageRequest = pageRequest(page, size);
         if (latitude == null && longitude == null) {
-            return donationService.listFeed(pageRequest);
+            return donationService.listFeed(jwt.getSubject(), pageRequest);
         }
         if (latitude == null || longitude == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Send both lat and lng, or neither");
@@ -61,7 +65,7 @@ class DonationController {
         if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid location");
         }
-        return donationService.listFeedNearest(latitude, longitude, pageRequest);
+        return donationService.listFeedNearest(jwt.getSubject(), latitude, longitude, pageRequest);
     }
 
     @GetMapping("/mine")

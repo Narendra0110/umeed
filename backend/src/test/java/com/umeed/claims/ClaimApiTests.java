@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
@@ -150,10 +151,11 @@ class ClaimApiTests {
         mockMvc.perform(get("/api/v1/donations/" + donationId + "/claims").with(donor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].claimantName").value("Asha"))
-                .andExpect(jsonPath("$[0].message").value("I need it for my brother"))
-                .andExpect(jsonPath("$[1].claimantName").value("Bilal"))
-                .andExpect(jsonPath("$[0].phoneNumber").doesNotExist());
+                // Looked up by name: claims made in the same instant may come back in either order.
+                .andExpect(jsonPath("$[?(@.claimantName == 'Asha')].message", contains("I need it for my brother")))
+                .andExpect(jsonPath("$[?(@.claimantName == 'Bilal')].message", contains("Would help a lot")))
+                .andExpect(jsonPath("$[0].phoneNumber").doesNotExist())
+                .andExpect(jsonPath("$[1].phoneNumber").doesNotExist());
 
         // A claimant cannot see who else claimed.
         mockMvc.perform(get("/api/v1/donations/" + donationId + "/claims").with(asha()))
@@ -180,8 +182,8 @@ class ClaimApiTests {
         // The other claim was rejected, and its owner can see that.
         mockMvc.perform(get("/api/v1/donations/" + donationId + "/claims").with(donor()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].status").value("ACCEPTED"))
-                .andExpect(jsonPath("$[1].status").value("REJECTED"));
+                .andExpect(jsonPath("$[?(@.claimantName == 'Asha')].status", contains("ACCEPTED")))
+                .andExpect(jsonPath("$[?(@.claimantName == 'Bilal')].status", contains("REJECTED")));
         mockMvc.perform(get("/api/v1/claims/mine").with(bilal()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].id").value(bilalClaim))
@@ -265,6 +267,40 @@ class ClaimApiTests {
                 .andExpect(status().isConflict());
         mockMvc.perform(post("/api/v1/donations/" + donationId + "/claims").with(bilal()))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    void theFeedShowsOnlyItemsTheCallerCanStillClaim() throws Exception {
+        String donationId = donorPostsDonation();
+        register(asha(), "Asha");
+        register(bilal(), "Bilal");
+
+        // Before claiming, both see it, newest first and nearest first.
+        mockMvc.perform(get("/api/v1/donations?size=50").with(asha()))
+                .andExpect(jsonPath("$.items[*].id", hasItem(donationId)));
+        mockMvc.perform(get("/api/v1/donations?lat=22.72&lng=75.86&size=50").with(asha()))
+                .andExpect(jsonPath("$.items[*].id", hasItem(donationId)));
+
+        // After Asha claims, it leaves her feed (both orders) but stays in Bilal's.
+        String ashaClaim = claim(donationId, asha(), "Please");
+        mockMvc.perform(get("/api/v1/donations?size=50").with(asha()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].id", not(hasItem(donationId))));
+        mockMvc.perform(get("/api/v1/donations?lat=22.72&lng=75.86&size=50").with(asha()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[*].id", not(hasItem(donationId))));
+        mockMvc.perform(get("/api/v1/donations?size=50").with(bilal()))
+                .andExpect(jsonPath("$.items[*].id", hasItem(donationId)));
+
+        // A withdrawn claim cannot be made again, so the item stays out of her feed.
+        mockMvc.perform(post("/api/v1/claims/" + ashaClaim + "/withdraw").with(asha()))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/donations?size=50").with(asha()))
+                .andExpect(jsonPath("$.items[*].id", not(hasItem(donationId))));
+
+        // The item itself can still be opened directly (for example from Activity).
+        mockMvc.perform(get("/api/v1/donations/" + donationId).with(asha()))
+                .andExpect(status().isOk());
     }
 
     @Test

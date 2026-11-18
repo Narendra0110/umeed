@@ -133,8 +133,18 @@ class DonationApiTests {
         return JsonPath.read(created, "$.id");
     }
 
+    private void registerOtherUser() throws Exception {
+        mockMvc.perform(get("/api/v1/users/me").with(otherUserToken()))
+                .andExpect(status().isOk());
+    }
+
+    /** The feed as another user sees it: the donor's own items never appear in the donor's own feed. */
     private List<String> feedIds(String query) throws Exception {
-        String body = mockMvc.perform(get("/api/v1/donations" + query).with(verifiedToken()))
+        return feedIds(query, otherUserToken());
+    }
+
+    private List<String> feedIds(String query, RequestPostProcessor token) throws Exception {
+        String body = mockMvc.perform(get("/api/v1/donations" + query).with(token))
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(body, "$.items[*].id");
@@ -145,8 +155,9 @@ class DonationApiTests {
     }
 
     @Test
-    void postedDonationAppearsInTheFeedAndByIdWithoutPrivateDetails() throws Exception {
+    void postedDonationAppearsInOthersFeedAndByIdWithoutPrivateDetails() throws Exception {
         registerDonor(true);
+        registerOtherUser();
         String categoryId = firstCategoryId();
 
         MockMultipartHttpServletRequestBuilder form = validForm(categoryId);
@@ -170,7 +181,7 @@ class DonationApiTests {
         String id = JsonPath.read(created, "$.id");
         String firstImageUrl = JsonPath.read(created, "$.imageUrls[0]");
 
-        mockMvc.perform(get("/api/v1/donations").with(verifiedToken()))
+        mockMvc.perform(get("/api/v1/donations").with(otherUserToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[*].id", hasItem(id)))
                 .andExpect(jsonPath("$.page").value(0))
@@ -278,6 +289,7 @@ class DonationApiTests {
     @Test
     void feedWithLocationIsSortedNearestFirst() throws Exception {
         registerDonor(true);
+        registerOtherUser();
         String indore = postDonation("Item in Indore", "22.75", "75.89");
         String delhi = postDonation("Item in Delhi", "28.61", "77.21");
 
@@ -287,6 +299,19 @@ class DonationApiTests {
 
         List<String> nearDelhi = feedIds("?lat=28.60&lng=77.20&size=50");
         assertTrue(nearDelhi.indexOf(delhi) < nearDelhi.indexOf(indore), "Delhi item should come first near Delhi");
+    }
+
+    @Test
+    void donorNeverSeesTheirOwnItemsInTheFeed() throws Exception {
+        registerDonor(true);
+        registerOtherUser();
+        String id = postDonation("My own item", "22.75", "75.89");
+
+        assertTrue(!feedIds("?size=50", verifiedToken()).contains(id), "own item in own newest-first feed");
+        assertTrue(!feedIds("?lat=22.72&lng=75.86&size=50", verifiedToken()).contains(id),
+                "own item in own nearest-first feed");
+        assertTrue(feedIds("?size=50").contains(id), "other users should see it");
+        assertTrue(feedIds("?lat=22.72&lng=75.86&size=50").contains(id), "other users should see it nearest-first");
     }
 
     @Test
@@ -331,7 +356,7 @@ class DonationApiTests {
 
         mockMvc.perform(get("/api/v1/donations/" + id).with(verifiedToken()))
                 .andExpect(status().isNotFound());
-        mockMvc.perform(get("/api/v1/donations?size=50").with(verifiedToken()))
+        mockMvc.perform(get("/api/v1/donations?size=50").with(otherUserToken()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[*].id", not(hasItem(id))));
         mockMvc.perform(get("/api/v1/donations/mine").with(verifiedToken()))

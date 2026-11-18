@@ -36,6 +36,8 @@ public class DonationService {
 
     private static final int MAX_PHOTOS = 5;
     private static final long MAX_PHOTO_BYTES = 5L * 1024 * 1024;
+    /** The all-zero UUID. Never generated for a donation; used only to keep "not in" lists non-empty. */
+    private static final UUID NO_DONATION = new UUID(0L, 0L);
 
     private final DonationRepository donationRepository;
     private final DonationImageRepository donationImageRepository;
@@ -43,6 +45,7 @@ public class DonationService {
     private final UserService userService;
     private final CategoryService categoryService;
     private final ApplicationEventPublisher eventPublisher;
+    private final ClaimedDonations claimedDonations;
 
     DonationService(
             DonationRepository donationRepository,
@@ -50,13 +53,15 @@ public class DonationService {
             FileStorage fileStorage,
             UserService userService,
             CategoryService categoryService,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            ClaimedDonations claimedDonations) {
         this.donationRepository = donationRepository;
         this.donationImageRepository = donationImageRepository;
         this.fileStorage = fileStorage;
         this.userService = userService;
         this.categoryService = categoryService;
         this.eventPublisher = eventPublisher;
+        this.claimedDonations = claimedDonations;
     }
 
     /**
@@ -111,21 +116,36 @@ public class DonationService {
     }
 
     /**
-     * The feed: available donations, newest first.
+     * The feed: available donations the caller can claim, newest first. The caller's own donations
+     * and the ones they have already claimed (in any claim status) are left out.
      */
     @Transactional(readOnly = true)
-    public PageResponse<DonationResponse> listFeed(Pageable pageable) {
-        Page<Donation> page = donationRepository.findByStatusOrderByCreatedAtDesc(Donation.Status.AVAILABLE, pageable);
+    public PageResponse<DonationResponse> listFeed(String firebaseUid, Pageable pageable) {
+        UserResponse caller = userService.requireActiveUser(firebaseUid);
+        Page<Donation> page = donationRepository.findClaimableNewestFirst(
+                caller.id(), alreadyClaimedBy(caller.id()), pageable);
         return PageResponse.of(toResponses(page));
     }
 
     /**
-     * The feed sorted by distance from the caller's location, nearest first. The location is not stored.
+     * The same feed sorted by distance from the caller's location, nearest first. The location is not stored.
      */
     @Transactional(readOnly = true)
-    public PageResponse<DonationResponse> listFeedNearest(double latitude, double longitude, Pageable pageable) {
-        Page<Donation> page = donationRepository.findAvailableNearestFirst(latitude, longitude, pageable);
+    public PageResponse<DonationResponse> listFeedNearest(
+            String firebaseUid, double latitude, double longitude, Pageable pageable) {
+        UserResponse caller = userService.requireActiveUser(firebaseUid);
+        Page<Donation> page = donationRepository.findClaimableNearestFirst(
+                caller.id(), alreadyClaimedBy(caller.id()), latitude, longitude, pageable);
         return PageResponse.of(toResponses(page));
+    }
+
+    /**
+     * The ids to leave out of the caller's feed. SQL "not in ()" with an empty list is invalid, so an
+     * empty result is replaced by one id that no donation can have (donation ids are random UUIDs).
+     */
+    private Set<UUID> alreadyClaimedBy(UUID userId) {
+        Set<UUID> claimed = claimedDonations.donationIdsClaimedBy(userId);
+        return claimed.isEmpty() ? Set.of(NO_DONATION) : claimed;
     }
 
     /**

@@ -10,17 +10,23 @@ import org.springframework.data.repository.query.Param;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 interface ClaimRepository extends JpaRepository<Claim, UUID> {
 
     boolean existsByDonationIdAndClaimantId(UUID donationId, UUID claimantId);
 
-    List<Claim> findByDonationIdOrderByCreatedAtAsc(UUID donationId);
+    /** Oldest first. Two claims made at the same instant are ordered by id, so the order never changes between calls. */
+    List<Claim> findByDonationIdOrderByCreatedAtAscIdAsc(UUID donationId);
 
     Page<Claim> findByClaimantIdOrderByCreatedAtDesc(UUID claimantId, Pageable pageable);
 
     Optional<Claim> findFirstByDonationIdAndStatus(UUID donationId, Claim.Status status);
+
+    /** Every donation this user has claimed, whatever the claim's status. */
+    @Query("select c.donationId from Claim c where c.claimantId = :claimantId")
+    Set<UUID> findDonationIdsByClaimantId(@Param("claimantId") UUID claimantId);
 
     /**
      * Changes one claim's status only if it currently has the expected status.

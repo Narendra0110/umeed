@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasItem;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
@@ -251,10 +252,9 @@ class PickupApiTests {
                 .andExpect(jsonPath("$.items[*].id", hasItem(donationId)));
         mockMvc.perform(get("/api/v1/donations/" + donationId + "/claims").with(donor()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].claimantName").value("Asha"))
-                .andExpect(jsonPath("$[0].status").value("REJECTED"))
-                .andExpect(jsonPath("$[1].claimantName").value("Bilal"))
-                .andExpect(jsonPath("$[1].status").value("PENDING"));
+                // Looked up by name: claims made in the same instant may come back in either order.
+                .andExpect(jsonPath("$[?(@.claimantName == 'Asha')].status", contains("REJECTED")))
+                .andExpect(jsonPath("$[?(@.claimantName == 'Bilal')].status", contains("PENDING")));
 
         // The private details are closed again.
         mockMvc.perform(get(pickupUrl()).with(asha()))

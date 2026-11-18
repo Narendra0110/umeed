@@ -73,7 +73,7 @@ public class ClaimService {
         if (!donation.donorId().equals(caller.id())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the donor can see the claims");
         }
-        List<Claim> claims = claimRepository.findByDonationIdOrderByCreatedAtAsc(donationId);
+        List<Claim> claims = claimRepository.findByDonationIdOrderByCreatedAtAscIdAsc(donationId);
         Set<UUID> claimantIds = new HashSet<>();
         for (Claim claim : claims) {
             claimantIds.add(claim.getClaimantId());
