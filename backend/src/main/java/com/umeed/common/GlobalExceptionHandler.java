@@ -74,8 +74,15 @@ class GlobalExceptionHandler {
                 .toList();
     }
 
+    /** Messages are written in English; when the app asks for Hindi, known ones are swapped for their Hindi version. */
     private static ResponseEntity<ApiError> respond(
             HttpStatusCode status, String message, HttpServletRequest request, List<ApiError.FieldError> fieldErrors) {
+        if (HindiMessages.wanted(request)) {
+            message = HindiMessages.translate(message);
+            fieldErrors = fieldErrors.stream()
+                    .map(error -> new ApiError.FieldError(error.field(), HindiMessages.translate(error.message())))
+                    .toList();
+        }
         return ResponseEntity.status(status)
                 .body(ApiError.of(status.value(), reasonPhrase(status), message, request.getRequestURI(), fieldErrors));
     }

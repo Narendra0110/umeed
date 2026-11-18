@@ -89,6 +89,30 @@ class UserApiTests {
     }
 
     @Test
+    void messagesComeInHindiWhenTheAppAsksForHindi() throws Exception {
+        mockMvc.perform(get("/api/v1/users/me").with(jwt().jwt(token -> token.subject(FIREBASE_UID)))
+                        .header("Accept-Language", "hi"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("फ़ोन नंबर से लॉग इन करना ज़रूरी है"));
+
+        mockMvc.perform(get("/api/v1/users/me").with(verifiedToken())).andExpect(status().isOk());
+        mockMvc.perform(put("/api/v1/users/me/language").with(verifiedToken())
+                        .header("Accept-Language", "hi")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"language\":\"fr\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("कुछ जानकारी सही नहीं है"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("भाषा en या hi होनी चाहिए"));
+
+        // English when asked for English, or when nothing is asked.
+        mockMvc.perform(put("/api/v1/users/me/language").with(verifiedToken())
+                        .header("Accept-Language", "en")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"language\":\"fr\"}"))
+                .andExpect(jsonPath("$.fieldErrors[0].message").value("Language must be en or hi"));
+    }
+
+    @Test
     void tokenWithoutPhoneNumberIsRefused() throws Exception {
         mockMvc.perform(get("/api/v1/users/me").with(jwt().jwt(token -> token.subject(FIREBASE_UID))))
                 .andExpect(status().isForbidden())

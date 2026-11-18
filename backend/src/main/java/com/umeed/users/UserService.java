@@ -14,7 +14,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Service
-public class UserService {
+public class UserService implements UserLanguages {
 
     private final UserRepository userRepository;
 
@@ -62,6 +62,7 @@ public class UserService {
     }
 
     /** Each user's language ("en" or "hi"), for notifications. Unknown ids are left out. */
+    @Override
     @Transactional(readOnly = true)
     public Map<UUID, String> languagesByIds(Collection<UUID> userIds) {
         Map<UUID, String> languages = new HashMap<>();

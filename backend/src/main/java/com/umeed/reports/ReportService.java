@@ -46,9 +46,9 @@ public class ReportService {
         }
         requireDetailsForOther(reason, details);
         if (reportRepository.existsByDonationIdAndReporterId(donationId, reporter.id())) {
-            throw alreadyReported("listing");
+            throw alreadyReportedListing();
         }
-        return save(Report.aboutDonation(donationId, reporter.id(), reason, details), "listing");
+        return save(Report.aboutDonation(donationId, reporter.id(), reason, details), false);
     }
 
     /**
@@ -63,9 +63,9 @@ public class ReportService {
         }
         requireDetailsForOther(reason, details);
         if (reportRepository.existsByNeedIdAndReporterId(needId, reporter.id())) {
-            throw alreadyReported("need");
+            throw alreadyReportedNeed();
         }
-        return save(Report.aboutNeed(needId, reporter.id(), reason, details), "need");
+        return save(Report.aboutNeed(needId, reporter.id(), reason, details), true);
     }
 
     // ----- For the admin module. The caller must already have checked that the person is an admin. -----
@@ -104,11 +104,11 @@ public class ReportService {
         return reports.size();
     }
 
-    private ReportResponse save(Report report, String what) {
+    private ReportResponse save(Report report, boolean aboutNeed) {
         try {
             return ReportResponse.from(reportRepository.saveAndFlush(report));
         } catch (DataIntegrityViolationException e) {
-            throw alreadyReported(what);
+            throw aboutNeed ? alreadyReportedNeed() : alreadyReportedListing();
         }
     }
 
@@ -118,7 +118,12 @@ public class ReportService {
         }
     }
 
-    private static ResponseStatusException alreadyReported(String what) {
-        return new ResponseStatusException(HttpStatus.CONFLICT, "You have already reported this " + what);
+    // Whole sentences, so each one has its Hindi version in i18n/messages-hi.txt.
+    private static ResponseStatusException alreadyReportedListing() {
+        return new ResponseStatusException(HttpStatus.CONFLICT, "You have already reported this listing");
+    }
+
+    private static ResponseStatusException alreadyReportedNeed() {
+        return new ResponseStatusException(HttpStatus.CONFLICT, "You have already reported this need");
     }
 }

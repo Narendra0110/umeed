@@ -1,0 +1,135 @@
+# Hindi versions of the backend's messages (F07B).
+# Each line: the exact English message => its Hindi version. Lines starting with # are ignored.
+# When the app asks for Hindi (Accept-Language: hi), GlobalExceptionHandler swaps every message found here.
+# A message that is missing stays in English; HindiMessagesTests fails the build if one is missing.
+# Please have a native Hindi speaker review these before launch.
+
+# ----- General -----
+Validation failed => कुछ जानकारी सही नहीं है
+Request body is missing or is not valid JSON => भेजी गई जानकारी पढ़ी नहीं जा सकी
+You are not allowed to do this => आपको यह करने की अनुमति नहीं है
+Something went wrong. Please try again. => कुछ गड़बड़ हो गई। कृपया फिर से कोशिश करें।
+Invalid value => यह मान सही नहीं है
+File not found => फ़ाइल नहीं मिली
+
+# ----- Account -----
+User not found => यूज़र नहीं मिला
+Account is not active => खाता सक्रिय नहीं है
+Phone sign-in is required => फ़ोन नंबर से लॉग इन करना ज़रूरी है
+Display name is required => नाम लिखना ज़रूरी है
+Display name must be between 2 and 80 characters => नाम 2 से 80 अक्षरों का होना चाहिए
+Language is required => भाषा चुनना ज़रूरी है
+Language must be en or hi => भाषा en या hi होनी चाहिए
+Finish or cancel your pickups before deleting your account => खाता हटाने से पहले अपने पिकअप पूरे या रद्द करें
+
+# ----- Admin (the dashboard stays English; these are here for completeness) -----
+Admins only => सिर्फ़ एडमिन के लिए
+An admin cannot be suspended => एडमिन का खाता रोका नहीं जा सकता
+Only an active account can be suspended => सिर्फ़ सक्रिय खाता ही रोका जा सकता है
+This account is not suspended => यह खाता रोका नहीं गया है
+Choose REVIEWED or DISMISSED => REVIEWED या DISMISSED चुनें
+Report not found => शिकायत नहीं मिली
+This report has already been handled => इस शिकायत पर पहले ही कार्रवाई हो चुकी है
+
+# ----- Blocking -----
+Choose who to block => चुनें कि किसे ब्लॉक करना है
+You cannot block yourself => आप खुद को ब्लॉक नहीं कर सकते
+Cancel your pickup with this person before blocking them => ब्लॉक करने से पहले इस व्यक्ति के साथ अपना पिकअप रद्द करें
+
+# ----- Listings -----
+Donation not found => सामान नहीं मिला
+Unknown category => यह श्रेणी मौजूद नहीं है
+Complete your profile before posting a donation => सामान पोस्ट करने से पहले अपना नाम जोड़ें
+Add between 1 and 5 photos => 1 से 5 फ़ोटो जोड़ें
+Each photo must be 5 MB or smaller => हर फ़ोटो 5 MB या उससे छोटी होनी चाहिए
+A photo is empty => एक फ़ोटो खाली है
+A photo could not be read => एक फ़ोटो पढ़ी नहीं जा सकी
+Photos must be JPEG, PNG or WebP images => फ़ोटो JPEG, PNG या WebP होनी चाहिए
+Could not save the photos. Please try again. => फ़ोटो सेव नहीं हो सकीं। कृपया फिर से कोशिश करें।
+Only the donor can remove this donation => सिर्फ़ दानदाता ही यह सामान हटा सकते हैं
+Only an available donation can be removed => सिर्फ़ उपलब्ध सामान ही हटाया जा सकता है
+This donation is no longer available => यह सामान अब उपलब्ध नहीं है
+Only the donor can accept a claim => सिर्फ़ दानदाता ही क्लेम स्वीकार कर सकते हैं
+This donation is not reserved => यह सामान आरक्षित नहीं है
+Only a reserved donation can be cancelled => सिर्फ़ आरक्षित सामान का पिकअप रद्द किया जा सकता है
+Title is required => शीर्षक लिखना ज़रूरी है
+Title must be between 3 and 100 characters => शीर्षक 3 से 100 अक्षरों का होना चाहिए
+Description is required => विवरण लिखना ज़रूरी है
+Description must be between 10 and 1000 characters => विवरण 10 से 1000 अक्षरों का होना चाहिए
+Category is required => श्रेणी चुनना ज़रूरी है
+Condition is required => हालत चुनना ज़रूरी है
+City is required => शहर लिखना ज़रूरी है
+City must be at most 100 characters => शहर 100 अक्षरों से ज़्यादा नहीं हो सकता
+Area is required => इलाका लिखना ज़रूरी है
+Area must be at most 100 characters => इलाका 100 अक्षरों से ज़्यादा नहीं हो सकता
+Pickup address is required => पिकअप का पता लिखना ज़रूरी है
+Pickup address must be between 10 and 500 characters => पिकअप का पता 10 से 500 अक्षरों का होना चाहिए
+Latitude is required => लोकेशन ज़रूरी है
+Latitude must be between -90 and 90 => लोकेशन सही नहीं है
+Longitude is required => लोकेशन ज़रूरी है
+Longitude must be between -180 and 180 => लोकेशन सही नहीं है
+
+# ----- Search and location -----
+Send both lat and lng, or neither => लोकेशन अधूरी है
+Invalid location => लोकेशन सही नहीं है
+Search words must be at most 100 characters => खोज के शब्द 100 अक्षरों से ज़्यादा नहीं हो सकते
+A distance limit needs your location => दूरी से खोजने के लिए आपकी लोकेशन चाहिए
+The distance must be between 1 and 500 km => दूरी 1 से 500 किमी के बीच होनी चाहिए
+
+# ----- Claims -----
+Claim not found => क्लेम नहीं मिला
+Complete your profile before claiming a donation => क्लेम करने से पहले अपना नाम जोड़ें
+You cannot claim your own donation => आप अपना ही सामान क्लेम नहीं कर सकते
+You cannot claim this item => आप यह सामान क्लेम नहीं कर सकते
+You have already claimed this donation => आप यह सामान पहले ही क्लेम कर चुके हैं
+This item is no longer available => यह सामान अब उपलब्ध नहीं है
+Only the donor can see the claims => क्लेम सिर्फ़ दानदाता देख सकते हैं
+This claim is no longer pending => यह क्लेम अब इंतज़ार में नहीं है
+Only the claimant can withdraw this claim => यह क्लेम सिर्फ़ क्लेम करने वाले ही वापस ले सकते हैं
+Only a pending claim can be withdrawn => सिर्फ़ इंतज़ार वाला क्लेम ही वापस लिया जा सकता है
+No claim has been accepted for this donation => इस सामान का कोई क्लेम स्वीकार नहीं हुआ है
+You cannot accept this offer => आप यह ऑफ़र स्वीकार नहीं कर सकते
+Message must be at most 300 characters => संदेश 300 अक्षरों से ज़्यादा नहीं हो सकता
+
+# ----- Pickup -----
+No claim has been accepted for this donation yet => इस सामान का अभी कोई क्लेम स्वीकार नहीं हुआ है
+Only the donor and the accepted receiver can do this => यह सिर्फ़ दानदाता और चुने गए व्यक्ति ही कर सकते हैं
+
+# ----- Chat -----
+Chat not found => चैट नहीं मिली
+Only the donor and the receiver can see this chat => यह चैट सिर्फ़ दानदाता और लेने वाले देख सकते हैं
+This chat is closed because the pickup is finished or cancelled => यह चैट बंद है क्योंकि पिकअप पूरा हो गया या रद्द हो गया
+Unknown message in this conversation => इस बातचीत में यह संदेश नहीं मिला
+Write a message => संदेश लिखें
+A message can be at most 1000 characters => संदेश 1000 अक्षरों से ज़्यादा नहीं हो सकता
+
+# ----- Needs and offers -----
+Complete your profile before asking for something => कुछ माँगने से पहले अपना नाम जोड़ें
+Complete your profile before offering an item => सामान ऑफ़र करने से पहले अपना नाम जोड़ें
+Need not found => ज़रूरत नहीं मिली
+Offer not found => ऑफ़र नहीं मिला
+Only the person who asked can do this => यह सिर्फ़ माँगने वाले ही कर सकते हैं
+This need is no longer open => यह ज़रूरत अब खुली नहीं है
+You cannot offer an item for your own need => आप अपनी ही ज़रूरत के लिए सामान ऑफ़र नहीं कर सकते
+You cannot offer an item for this need => आप इस ज़रूरत के लिए सामान ऑफ़र नहीं कर सकते
+You can only offer your own items => आप सिर्फ़ अपना ही सामान ऑफ़र कर सकते हैं
+You have already offered this item for this need => आप यह सामान इस ज़रूरत के लिए पहले ही ऑफ़र कर चुके हैं
+This offer is no longer waiting => यह ऑफ़र अब इंतज़ार में नहीं है
+Only the donor can withdraw this offer => यह ऑफ़र सिर्फ़ दानदाता ही वापस ले सकते हैं
+Only a waiting offer can be withdrawn => सिर्फ़ इंतज़ार वाला ऑफ़र ही वापस लिया जा सकता है
+Choose one of your items => अपना एक सामान चुनें
+The message must be at most 300 characters => संदेश 300 अक्षरों से ज़्यादा नहीं हो सकता
+
+# ----- Reports -----
+Reason is required => कारण चुनना ज़रूरी है
+Details must be at most 500 characters => जानकारी 500 अक्षरों से ज़्यादा नहीं हो सकती
+Please describe the problem => कृपया समस्या बताएँ
+You cannot report your own listing => आप अपने ही सामान की शिकायत नहीं कर सकते
+You cannot report your own need => आप अपनी ही ज़रूरत की शिकायत नहीं कर सकते
+You have already reported this listing => आप इस सामान की शिकायत पहले ही कर चुके हैं
+You have already reported this need => आप इस ज़रूरत की शिकायत पहले ही कर चुके हैं
+
+# ----- Notifications setup -----
+The device token is missing => डिवाइस टोकन नहीं मिला
+The device token is too long => डिवाइस टोकन बहुत लंबा है
+Platform must be ANDROID or IOS => प्लेटफ़ॉर्म ANDROID या IOS होना चाहिए

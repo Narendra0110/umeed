@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -35,15 +36,51 @@ class NotificationListenerTests {
             }
         };
         PushDispatcher dispatcher = mock(PushDispatcher.class);
-        NotificationListener listener = new NotificationListener(dispatcher, blockedUsers);
+        NotificationListener listener = new NotificationListener(dispatcher, blockedUsers, ids -> Map.of());
 
         listener.onClaimAccepted(new ClaimAcceptedEvent(
                 UUID.randomUUID(), "Lamp", donor, receiver, List.of(blockedClaimant, otherClaimant), true));
 
+        List<UUID> recipients = sent(dispatcher).stream().map(Notice::userId).toList();
+        assertEquals(List.of(receiver, otherClaimant), recipients);
+    }
+
+    @Test
+    void eachPersonIsNotifiedInTheirOwnLanguage() {
+        UUID donor = UUID.randomUUID();
+        UUID hindiReceiver = UUID.randomUUID();
+        UUID englishClaimant = UUID.randomUUID();
+        UUID unknownClaimant = UUID.randomUUID();
+        BlockedUsers nobodyBlocked = new BlockedUsers() {
+            @Override
+            public Set<UUID> blockedEitherWay(UUID userId) {
+                return Set.of();
+            }
+
+            @Override
+            public boolean isBlockedEitherWay(UUID userId, UUID otherUserId) {
+                return false;
+            }
+        };
+        PushDispatcher dispatcher = mock(PushDispatcher.class);
+        NotificationListener listener = new NotificationListener(
+                dispatcher, nobodyBlocked, ids -> Map.of(hindiReceiver, "hi", englishClaimant, "en"));
+
+        listener.onClaimAccepted(new ClaimAcceptedEvent(
+                UUID.randomUUID(), "Lamp", donor, hindiReceiver, List.of(englishClaimant, unknownClaimant), true));
+
+        List<Notice> notices = sent(dispatcher);
+        assertEquals("“Lamp” आपका हुआ!", notices.get(0).title());
+        assertEquals("पिकअप की जानकारी के लिए उम्मीद खोलें।", notices.get(0).body());
+        assertEquals("“Lamp” went to someone else", notices.get(1).title());
+        // Without a known language, English.
+        assertEquals("“Lamp” went to someone else", notices.get(2).title());
+    }
+
+    private static List<Notice> sent(PushDispatcher dispatcher) {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<Notice>> captor = ArgumentCaptor.forClass(List.class);
         verify(dispatcher).dispatchAfterCommit(captor.capture());
-        List<UUID> recipients = captor.getValue().stream().map(Notice::userId).toList();
-        assertEquals(List.of(receiver, otherClaimant), recipients);
+        return captor.getValue();
     }
 }
