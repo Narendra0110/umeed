@@ -104,10 +104,22 @@
 	</dependencies>
 
 	<build>
+		<!-- The runnable file is target/backend.jar, the name the server's service expects (deploy/umeed-backend.service). -->
+		<finalName>backend</finalName>
 		<plugins>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<plugin>
+				<!-- Tests act fast and as few users, so the rate limits (H02) are off for them; RateLimitTests turns them back on. -->
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<systemPropertyVariables>
+						<umeed.rate-limit.enabled>false</umeed.rate-limit.enabled>
+					</systemPropertyVariables>
+				</configuration>
 			</plugin>
 		</plugins>
 	</build>

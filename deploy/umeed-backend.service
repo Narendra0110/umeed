@@ -1,0 +1,35 @@
+# systemd service for the Umeed backend (H02). Installed on the server in H03:
+#   sudo cp umeed-backend.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now umeed-backend
+# Logs: journalctl -u umeed-backend -f
+[Unit]
+Description=Umeed backend (Spring Boot)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# A dedicated user with no login shell and no sudo (created in H03).
+User=umeed
+Group=umeed
+WorkingDirectory=/opt/umeed
+# Secrets live only in this file on the server, readable by root and umeed (chmod 640). Never committed.
+EnvironmentFile=/etc/umeed/backend.env
+Environment=SPRING_PROFILES_ACTIVE=prod
+# 1 GB of heap leaves room for PostgreSQL, Nginx and the admin dashboard on a 4 GB server.
+ExecStart=/usr/bin/java -Xms256m -Xmx1g -XX:+ExitOnOutOfMemoryError -jar /opt/umeed/backend.jar
+# The backend finishes running requests on stop (graceful shutdown, 20 s).
+TimeoutStopSec=30
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=10
+
+# Hardening: the service can write only to the photos folder.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/umeed/photos
+
+[Install]
+WantedBy=multi-user.target
