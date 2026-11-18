@@ -87,11 +87,16 @@ describe('apiFetch', () => {
     expect(errorMessage(error)).toBe('Something went wrong. Please try again.');
   });
 
-  it('reports a network failure as status 0', async () => {
-    fetchMock.mockRejectedValueOnce(new TypeError('Network request failed'));
+  it('reports a network failure as status 0 and logs the cause in development', async () => {
+    // The real cause is logged in development builds; keep it out of the test output.
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const cause = new TypeError('Network request failed');
+    fetchMock.mockRejectedValueOnce(cause);
     const error = (await apiFetch('/api/v1/donations').catch((e: unknown) => e)) as ApiError;
     expect(error).toBeInstanceOf(ApiError);
     expect(error.status).toBe(0);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('GET'), cause);
+    warn.mockRestore();
   });
 
   it('does not call the server when nobody is logged in', async () => {
