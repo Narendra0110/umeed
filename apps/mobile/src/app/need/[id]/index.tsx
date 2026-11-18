@@ -116,13 +116,20 @@ export default function NeedScreen() {
         </View>
       ) : null}
       {!isMine ? (
-        <LinkButton
-          title={`Block ${item.requesterName}`}
-          color={colors.muted}
-          onPress={() =>
-            confirmBlock(item.requesterName, (handlers) => block.mutate(item.requesterId, handlers), () => router.back())
-          }
-        />
+        <View style={styles.links}>
+          <LinkButton
+            title="Report"
+            color={colors.muted}
+            onPress={() => router.push(`/need/${item.id}/report`)}
+          />
+          <LinkButton
+            title={`Block ${item.requesterName}`}
+            color={colors.muted}
+            onPress={() =>
+              confirmBlock(item.requesterName, (handlers) => block.mutate(item.requesterId, handlers), () => router.back())
+            }
+          />
+        </View>
       ) : null}
     </Screen>
   );
@@ -207,4 +214,5 @@ const styles = StyleSheet.create({
   offers: { gap: 10, marginTop: 8 },
   section: { fontSize: 15, fontWeight: '700', color: colors.muted, textTransform: 'uppercase' },
   flex: { flex: 1 },
+  links: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginTop: 8 },
 });

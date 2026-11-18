@@ -30,4 +30,14 @@ class ReportController {
             @Valid @RequestBody CreateReportRequest request) {
         return reportService.report(jwt.getSubject(), donationId, request.reason(), request.details());
     }
+
+    /** Report a need. Same body as for a listing. */
+    @PostMapping("/api/v1/needs/{needId}/reports")
+    @ResponseStatus(HttpStatus.CREATED)
+    ReportResponse reportNeed(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable("needId") UUID needId,
+            @Valid @RequestBody CreateReportRequest request) {
+        return reportService.reportNeed(jwt.getSubject(), needId, request.reason(), request.details());
+    }
 }

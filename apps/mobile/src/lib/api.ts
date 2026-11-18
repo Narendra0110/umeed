@@ -87,7 +87,20 @@ export function fileUrl(path: string): string {
 }
 
 /** A short message suitable for showing to the user. */
+/** The backend's answer to anything a suspended (or deleted) account tries to do. */
+export const ACCOUNT_NOT_ACTIVE = 'Account is not active';
+
+export const SUSPENDED_MESSAGE =
+  'Your account is suspended because of a report about your listings or needs. You cannot post, claim or chat until the Umeed team lifts it.';
+
+export function isAccountNotActive(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 403 && error.message === ACCOUNT_NOT_ACTIVE;
+}
+
 export function errorMessage(error: unknown): string {
+  if (isAccountNotActive(error)) {
+    return SUSPENDED_MESSAGE;
+  }
   if (error instanceof ApiError) {
     return error.fieldErrors[0]?.message ?? error.message;
   }

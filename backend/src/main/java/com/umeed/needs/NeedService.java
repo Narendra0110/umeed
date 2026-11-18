@@ -274,6 +274,40 @@ public class NeedService {
         offerRepository.changeStatusForDonor(userId, NeedOffer.Status.PENDING, NeedOffer.Status.WITHDRAWN, now);
     }
 
+    // ----- For the reports and admin modules -----
+
+    /** Basic facts about a need, in any status. */
+    @Transactional(readOnly = true)
+    public NeedSummary getSummary(UUID needId) {
+        return needRepository.findById(needId).map(NeedSummary::from).orElseThrow(NeedService::needNotFound);
+    }
+
+    /** One need in any status, with its waiting offers counted. The caller must already have checked it is an admin. */
+    @Transactional(readOnly = true)
+    public NeedResponse getForAdmin(UUID needId) {
+        NeedRequest need = needRepository.findById(needId).orElseThrow(NeedService::needNotFound);
+        Long pending = offerRepository.pendingCounts(List.of(needId)).getOrDefault(needId, 0L);
+        return NeedResponse.from(need, nameOf(need.getRequesterId()), pending);
+    }
+
+    /**
+     * An admin closes an open need, as if the person who asked had closed it: waiting offers are declined.
+     * The caller must already have checked it is an admin.
+     */
+    @Transactional
+    public NeedSummary closeByAdmin(UUID needId) {
+        NeedRequest need = needRepository.findForUpdateById(needId).orElseThrow(NeedService::needNotFound);
+        if (need.getStatus() != NeedRequest.Status.OPEN) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This need is no longer open");
+        }
+        need.close();
+        needRepository.flush();
+        NeedSummary summary = NeedSummary.from(need);
+        offerRepository.changeStatusForNeed(
+                needId, NeedOffer.Status.PENDING, NeedOffer.Status.DECLINED, Instant.now());
+        return summary;
+    }
+
     /** When a donor takes a listing down, its waiting offers are withdrawn in the same transaction. */
     @EventListener
     @Transactional
@@ -297,9 +331,11 @@ public class NeedService {
         }
     }
 
+    /** People whose needs the caller must not see: blocked either way, or suspended by an admin. */
     private Set<UUID> hiddenFor(UUID userId) {
-        Set<UUID> blocked = blockedUsers.blockedEitherWay(userId);
-        return blocked.isEmpty() ? Set.of(NO_USER) : blocked;
+        Set<UUID> hidden = new HashSet<>(blockedUsers.blockedEitherWay(userId));
+        hidden.addAll(userService.suspendedUserIds());
+        return hidden.isEmpty() ? Set.of(NO_USER) : hidden;
     }
 
     private String nameOf(UUID userId) {

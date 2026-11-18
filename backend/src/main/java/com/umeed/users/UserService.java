@@ -8,7 +8,9 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -55,6 +57,68 @@ public class UserService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is not active");
         }
         return UserResponse.from(user);
+    }
+
+    /**
+     * Returns the caller if they are an active admin; otherwise 403. The role is read from the database,
+     * never from the token or the request.
+     */
+    @Transactional(readOnly = true)
+    public UserResponse requireAdmin(String firebaseUid) {
+        UserResponse caller = requireActiveUser(firebaseUid);
+        if (!User.Role.ADMIN.name().equals(caller.role())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Admins only");
+        }
+        return caller;
+    }
+
+    /** The ids of every suspended user. Their listings and needs are left out of everyone's lists. */
+    @Transactional(readOnly = true)
+    public Set<UUID> suspendedUserIds() {
+        return new HashSet<>(userRepository.findIdsByStatus(User.Status.SUSPENDED));
+    }
+
+    /** For the admin module: one user, including private details. The caller must already be an admin. */
+    @Transactional(readOnly = true)
+    public UserResponse getForAdmin(UUID userId) {
+        return userRepository.findById(userId)
+                .map(UserResponse::from)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    }
+
+    /**
+     * For the admin module: suspends an active user. Admins and deleted accounts cannot be suspended.
+     * The caller must already be an admin.
+     */
+    @Transactional
+    public UserResponse suspend(UUID userId) {
+        User user = lockForAdmin(userId);
+        if (user.getRole() == User.Role.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "An admin cannot be suspended");
+        }
+        if (user.getStatus() != User.Status.ACTIVE) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only an active account can be suspended");
+        }
+        user.suspend();
+        userRepository.flush();
+        return UserResponse.from(user);
+    }
+
+    /** For the admin module: lifts a suspension. The caller must already be an admin. */
+    @Transactional
+    public UserResponse unsuspend(UUID userId) {
+        User user = lockForAdmin(userId);
+        if (user.getStatus() != User.Status.SUSPENDED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This account is not suspended");
+        }
+        user.unsuspend();
+        userRepository.flush();
+        return UserResponse.from(user);
+    }
+
+    private User lockForAdmin(UUID userId) {
+        return userRepository.findForUpdateById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
     /**

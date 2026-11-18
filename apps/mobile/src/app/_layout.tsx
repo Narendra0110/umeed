@@ -36,6 +36,7 @@ export default function RootLayout() {
         <Stack.Screen name="chat/[claimId]" options={{ title: 'Chat' }} />
         <Stack.Screen name="need/[id]/index" options={{ title: 'Need' }} />
         <Stack.Screen name="need/[id]/offer" options={{ title: 'Offer an item', presentation: 'modal' }} />
+        <Stack.Screen name="need/[id]/report" options={{ title: 'Report need', presentation: 'modal' }} />
         <Stack.Screen name="blocked" options={{ title: 'Blocked people' }} />
         <Stack.Screen name="delete-account" options={{ title: 'Delete account' }} />
       </Stack>

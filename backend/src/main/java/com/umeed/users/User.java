@@ -79,6 +79,14 @@ public class User {
         this.deletedAt = Instant.now();
     }
 
+    void suspend() {
+        this.status = Status.SUSPENDED;
+    }
+
+    void unsuspend() {
+        this.status = Status.ACTIVE;
+    }
+
     @PrePersist
     void onCreate() {
         Instant now = Instant.now();

@@ -211,10 +211,14 @@ public class DonationService {
         return excluded.isEmpty() ? Set.of(NO_DONATION) : excluded;
     }
 
-    /** Donors whose items the caller must not see. Same placeholder rule as alreadyClaimedBy. */
+    /**
+     * Donors whose items the caller must not see: blocked either way, or suspended by an admin (F06).
+     * Same placeholder rule as alreadyClaimedBy.
+     */
     private Set<UUID> hiddenDonorsFor(UUID userId) {
-        Set<UUID> blocked = blockedUsers.blockedEitherWay(userId);
-        return blocked.isEmpty() ? Set.of(NO_DONATION) : blocked;
+        Set<UUID> hidden = new HashSet<>(blockedUsers.blockedEitherWay(userId));
+        hidden.addAll(userService.suspendedUserIds());
+        return hidden.isEmpty() ? Set.of(NO_DONATION) : hidden;
     }
 
     /**
@@ -245,6 +249,36 @@ public class DonationService {
         }
         donation.markRemoved();
         eventPublisher.publishEvent(new DonationRemovedEvent(donationId));
+    }
+
+    // ----- For the admin module. The caller must already have checked that the person is an admin. -----
+
+    /**
+     * An admin takes a listing down, with the same effects as the donor removing it: waiting claims are
+     * rejected and waiting offers withdrawn. Only an available listing can be removed; a reserved one has a
+     * pickup in progress, which its two people finish or cancel.
+     */
+    @Transactional
+    public DonationSummary removeByAdmin(UUID donationId) {
+        Donation donation = lockExisting(donationId);
+        if (donation.getStatus() != Donation.Status.AVAILABLE) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT, "Only an available listing can be removed. This one is " + donation.getStatus());
+        }
+        donation.markRemoved();
+        DonationSummary summary = DonationSummary.from(donation);
+        // Saved before the event: its listeners run bulk updates that detach loaded entities.
+        donationRepository.flush();
+        eventPublisher.publishEvent(new DonationRemovedEvent(donationId));
+        return summary;
+    }
+
+    /** One donation in any status, including removed, with its photos if they still exist. */
+    @Transactional(readOnly = true)
+    public DonationResponse getForAdmin(UUID donationId) {
+        Donation donation = donationRepository.findById(donationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Donation not found"));
+        return toResponse(donation);
     }
 
     // ----- For other modules (claims, pickup). These never expose private details. -----
@@ -452,9 +486,13 @@ public class DonationService {
         Donation donation = donationRepository.findById(donationId)
                 .filter(found -> found.getStatus() != Donation.Status.REMOVED)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Donation not found"));
+        return toResponse(donation);
+    }
+
+    private DonationResponse toResponse(Donation donation) {
         String donorName = userService.displayNamesByIds(List.of(donation.getDonorId()))
                 .getOrDefault(donation.getDonorId(), "Umeed user");
-        List<String> imageUrls = donationImageRepository.findByDonationIdOrderBySortOrderAsc(donationId).stream()
+        List<String> imageUrls = donationImageRepository.findByDonationIdOrderBySortOrderAsc(donation.getId()).stream()
                 .map(image -> fileStorage.urlFor(image.getStorageKey()))
                 .toList();
         return DonationResponse.from(donation, donorName, imageUrls);

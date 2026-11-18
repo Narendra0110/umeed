@@ -169,6 +169,40 @@ class ReportApiTests {
     }
 
     @Test
+    void aNeedCanBeReportedOnceButNotByThePersonWhoAsked() throws Exception {
+        String categories = mockMvc.perform(get("/api/v1/categories"))
+                .andReturn().getResponse().getContentAsString();
+        String created = mockMvc.perform(post("/api/v1/needs").with(donor())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"categoryId":"%s","title":"Rain boots","description":"Size 5, any colour.",
+                                 "city":"Test city","area":"Test area","latitude":22.75,"longitude":75.89}
+                                """.formatted((String) JsonPath.read(categories, "$[0].id"))))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        String needId = JsonPath.read(created, "$.id");
+        String path = "/api/v1/needs/" + needId + "/reports";
+
+        mockMvc.perform(post(path).with(asha()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"FAKE_OR_MISLEADING\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.needId").value(needId))
+                .andExpect(jsonPath("$.donationId").doesNotExist())
+                .andExpect(jsonPath("$.status").value("OPEN"));
+        mockMvc.perform(post(path).with(asha()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"OFFENSIVE\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.message").value("You have already reported this need"));
+        mockMvc.perform(post(path).with(donor()).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"OFFENSIVE\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("You cannot report your own need"));
+        mockMvc.perform(post("/api/v1/needs/" + UUID.randomUUID() + "/reports").with(asha())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"OFFENSIVE\"}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void reportingNeedsALogin() throws Exception {
         mockMvc.perform(post("/api/v1/donations/" + donationId + "/reports")
                         .contentType(MediaType.APPLICATION_JSON)
