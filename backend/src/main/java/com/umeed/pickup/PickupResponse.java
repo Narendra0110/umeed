@@ -8,6 +8,7 @@ import java.util.UUID;
  */
 public record PickupResponse(
         UUID donationId,
+        UUID claimId,
         String donationTitle,
         String status,
         String pickupAddress,

@@ -87,7 +87,7 @@ export default function PickupScreen() {
       {completed ? (
         <Pill label="Given away – thank you!" tone="success" />
       ) : (
-        <Pill label="Reserved – arrange the pickup by phone" tone="warning" />
+        <Pill label="Reserved – arrange the pickup by message or phone" tone="warning" />
       )}
 
       <View style={styles.card}>
@@ -98,7 +98,15 @@ export default function PickupScreen() {
       </View>
 
       {role ? (
-        <PartyCard label={otherLabel} party={other} />
+        <>
+          <PartyCard label={otherLabel} party={other} />
+          {details.claimId ? (
+            <Button
+              title={completed ? `See messages with ${other.name}` : `Message ${other.name}`}
+              onPress={() => router.push(`/chat/${details.claimId}`)}
+            />
+          ) : null}
+        </>
       ) : (
         <>
           <PartyCard label="Donor" party={details.donor} />

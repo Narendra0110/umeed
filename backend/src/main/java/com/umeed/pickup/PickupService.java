@@ -106,6 +106,7 @@ public class PickupService {
         UserContact receiver = userService.contactOf(receiverId);
         return new PickupResponse(
                 donation.id(),
+                claimService.acceptedClaimId(donation.id()).orElse(null),
                 donation.title(),
                 donation.status(),
                 donation.pickupAddress(),

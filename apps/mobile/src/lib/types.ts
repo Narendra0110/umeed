@@ -57,6 +57,8 @@ export type PickupParty = { name: string; phoneNumber: string };
 /** Private pickup details. Returned only to the donor and the accepted receiver. */
 export type Pickup = {
   donationId: string;
+  /** The accepted claim; its conversation is the chat between donor and receiver. */
+  claimId: string | null;
   donationTitle: string;
   status: DonationStatus;
   pickupAddress: string;
@@ -64,6 +66,37 @@ export type Pickup = {
   receiver: PickupParty;
   donorConfirmed: boolean;
   receiverConfirmed: boolean;
+};
+
+export type ChatMessage = {
+  id: string;
+  mine: boolean;
+  body: string;
+  createdAt: string;
+  read: boolean;
+};
+
+/** One conversation. `open` is false once the pickup is finished or cancelled (read-only). */
+export type ChatThread = {
+  claimId: string;
+  donationId: string;
+  donationTitle: string;
+  otherPartyName: string;
+  open: boolean;
+  messages: ChatMessage[];
+};
+
+/** One row of the Chats tab. The last-message fields are null until something is written. */
+export type Conversation = {
+  claimId: string;
+  donationId: string;
+  donationTitle: string;
+  otherPartyName: string;
+  open: boolean;
+  lastMessage: string | null;
+  lastMessageMine: boolean;
+  lastMessageAt: string | null;
+  unreadCount: number;
 };
 
 export const REPORT_REASONS = [

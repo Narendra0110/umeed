@@ -84,6 +84,7 @@ describe('donationFormData', () => {
 describe('pickupRole', () => {
   const pickup: Pickup = {
     donationId: 'd1',
+    claimId: 'c1',
     donationTitle: 'School bag',
     status: 'RESERVED',
     pickupAddress: 'Flat 4',

@@ -35,6 +35,13 @@ describe('notificationRoute', () => {
     expect(notificationRoute({ donationId: DONATION })).toBe(`/donation/${DONATION}`);
   });
 
+  it('opens the chat for a new message', () => {
+    const claimId = '9c1d2e3f-4a5b-4c6d-8e7f-0a1b2c3d4e5f';
+    expect(notificationRoute({ donationId: DONATION, claimId, screen: 'chat' })).toBe(`/chat/${claimId}`);
+    // A chat notification without a usable claim falls back to the item.
+    expect(notificationRoute({ donationId: DONATION, claimId: 'x', screen: 'chat' })).toBe(`/donation/${DONATION}`);
+  });
+
   it('ignores missing or malformed data', () => {
     expect(notificationRoute(undefined)).toBeNull();
     expect(notificationRoute({ screen: 'pickup' })).toBeNull();

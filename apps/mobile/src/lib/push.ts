@@ -18,8 +18,12 @@ type NotificationData = Record<string, unknown> | undefined;
 
 /** Where a tapped notification should take the user. The backend sends donationId and screen. */
 export function notificationRoute(data: NotificationData): string | null {
-  const donationId = typeof data?.donationId === 'string' ? data.donationId : null;
-  if (!donationId || !/^[0-9a-f-]{36}$/i.test(donationId)) {
+  const isId = (value: unknown): value is string => typeof value === 'string' && /^[0-9a-f-]{36}$/i.test(value);
+  if (data?.screen === 'chat' && isId(data.claimId)) {
+    return `/chat/${data.claimId}`;
+  }
+  const donationId = isId(data?.donationId) ? data.donationId : null;
+  if (!donationId) {
     return null;
   }
   switch (data?.screen) {
@@ -111,6 +115,7 @@ export function usePushNotifications() {
       void queryClient.invalidateQueries({ queryKey: ['claims'] });
       void queryClient.invalidateQueries({ queryKey: ['donations'] });
       void queryClient.invalidateQueries({ queryKey: ['pickup'] });
+      void queryClient.invalidateQueries({ queryKey: ['chat'] });
       showBanner({
         title: message.notification?.title ?? 'Umeed',
         body: message.notification?.body ?? '',

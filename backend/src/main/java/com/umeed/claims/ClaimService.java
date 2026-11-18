@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -211,6 +213,59 @@ public class ClaimService {
     public void onDonationRemoved(DonationRemovedEvent event) {
         claimRepository.changeStatusForDonation(
                 event.donationId(), Claim.Status.PENDING, Claim.Status.REJECTED, Instant.now());
+    }
+
+    /**
+     * The id of the accepted claim on this donation, if any. It stays accepted after the handover.
+     */
+    @Transactional(readOnly = true)
+    public Optional<UUID> acceptedClaimId(UUID donationId) {
+        return claimRepository.findFirstByDonationIdAndStatus(donationId, Claim.Status.ACCEPTED)
+                .map(Claim::getId);
+    }
+
+    // ----- For the chat module -----
+
+    /**
+     * Who is involved in each of these claims, with the item's title and status. Unknown ids are left out.
+     */
+    @Transactional(readOnly = true)
+    public Map<UUID, ClaimParties> partiesOf(Collection<UUID> claimIds) {
+        List<Claim> claims = claimRepository.findAllById(claimIds);
+        Set<UUID> donationIds = new HashSet<>();
+        for (Claim claim : claims) {
+            donationIds.add(claim.getDonationId());
+        }
+        Map<UUID, DonationSummary> donations = donationService.summariesByIds(donationIds);
+        Map<UUID, ClaimParties> result = new HashMap<>();
+        for (Claim claim : claims) {
+            DonationSummary donation = donations.get(claim.getDonationId());
+            if (donation == null) {
+                continue;
+            }
+            result.put(claim.getId(), new ClaimParties(
+                    claim.getId(),
+                    claim.getDonationId(),
+                    donation.title(),
+                    donation.status(),
+                    donation.donorId(),
+                    claim.getClaimantId(),
+                    claim.getStatus().name()));
+        }
+        return result;
+    }
+
+    /**
+     * Every claim this user is part of: the claims they made and the claims on their items.
+     */
+    @Transactional(readOnly = true)
+    public Set<UUID> claimIdsInvolving(UUID userId) {
+        Set<UUID> ids = new HashSet<>(claimRepository.findIdsByClaimantId(userId));
+        List<UUID> ownItems = donationService.idsByDonor(userId);
+        if (!ownItems.isEmpty()) {
+            ids.addAll(claimRepository.findIdsByDonationIdIn(ownItems));
+        }
+        return ids;
     }
 
     // ----- For the blocks module -----

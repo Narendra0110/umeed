@@ -1,5 +1,6 @@
 package com.umeed.notifications;
 
+import com.umeed.chat.ChatMessageSentEvent;
 import com.umeed.claims.ClaimAcceptedEvent;
 import com.umeed.claims.ClaimSubmittedEvent;
 import com.umeed.pickup.HandoverConfirmedEvent;
@@ -23,6 +24,7 @@ class NotificationListener {
     static final String SCREEN_ITEM = "item";
     static final String SCREEN_CLAIMS = "claims";
     static final String SCREEN_PICKUP = "pickup";
+    static final String SCREEN_CHAT = "chat";
 
     private final PushDispatcher pushDispatcher;
     private final BlockedUsers blockedUsers;
@@ -80,6 +82,19 @@ class NotificationListener {
                 "Please confirm “" + event.donationTitle() + "” too.",
                 event.donationId(),
                 SCREEN_PICKUP)));
+    }
+
+    /** The message text is never included: it may contain an address, and notifications pass through Google. */
+    @EventListener
+    void onChatMessageSent(ChatMessageSentEvent event) {
+        send(event.senderId(), List.of(new Notice(
+                event.recipientId(),
+                nameOrDefault(event.senderName()) + " sent you a message",
+                "About “" + event.donationTitle() + "”. Open Umeed to reply.",
+                Map.of(
+                        "donationId", event.donationId().toString(),
+                        "claimId", event.claimId().toString(),
+                        "screen", SCREEN_CHAT))));
     }
 
     /** Leaves out anyone who has blocked the person who caused the notification, or was blocked by them. */

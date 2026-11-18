@@ -3,11 +3,15 @@ import { NativeTabs } from 'expo-router/native-tabs';
 
 import { colors, Loading } from '@/components/ui';
 import { useAuthUser } from '@/lib/auth';
+import { totalUnread, useConversations } from '@/lib/chat';
 import { usePushNotifications } from '@/lib/push';
 
-/** The four main tabs. Only reachable while logged in. */
+/** The five main tabs. Only reachable while logged in. */
 export default function TabsLayout() {
   const { initializing, user } = useAuthUser();
+  // Refreshed every 30 seconds while logged in, for the unread count on the Chats tab.
+  const conversations = useConversations(!!user);
+  const unread = totalUnread(conversations.data);
 
   if (initializing) {
     return <Loading />;
@@ -31,6 +35,14 @@ export default function TabsLayout() {
       <NativeTabs.Trigger name="activity">
         <NativeTabs.Trigger.Label>Activity</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon sf={{ default: 'shippingbox', selected: 'shippingbox.fill' }} md="inventory_2" />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="chats">
+        <NativeTabs.Trigger.Label>Chats</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          sf={{ default: 'bubble.left.and.bubble.right', selected: 'bubble.left.and.bubble.right.fill' }}
+          md="chat"
+        />
+        <NativeTabs.Trigger.Badge hidden={unread === 0}>{unread > 99 ? '99+' : String(unread)}</NativeTabs.Trigger.Badge>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <NativeTabs.Trigger.Label>Profile</NativeTabs.Trigger.Label>
