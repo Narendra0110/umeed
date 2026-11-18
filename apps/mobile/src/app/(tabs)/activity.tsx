@@ -68,10 +68,9 @@ function MyDonations() {
     );
   }
 
-  const open = (donation: Donation) =>
-    router.push(
-      donation.status === 'AVAILABLE' ? `/donation/${donation.id}/claims` : `/donation/${donation.id}/pickup`,
-    );
+  // The item screen has every donor action: See claims and Remove listing while available,
+  // Pickup details once reserved or given away. Own items are never on Home, so this is the way in.
+  const open = (donation: Donation) => router.push(`/donation/${donation.id}`);
 
   return (
     <SectionList
