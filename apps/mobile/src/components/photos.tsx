@@ -4,6 +4,7 @@ import { FlatList, type StyleProp, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '@/components/ui';
 import { fileUrl } from '@/lib/api';
+import { useT } from '@/lib/i18n';
 import { useAuthHeaders } from '@/lib/session';
 
 /** A stored photo. Photos are private to logged-in users, so the request carries the Firebase token. */
@@ -26,6 +27,7 @@ export function AuthImage({ path, style, label }: { path: string; style: StylePr
 
 /** Swipe sideways through a donation's photos, with dots showing which one is visible. */
 export function PhotoCarousel({ paths, width, height, title }: { paths: string[]; width: number; height: number; title: string }) {
+  const m = useT();
   const [index, setIndex] = useState(0);
 
   if (paths.length === 0 || width === 0) {
@@ -46,7 +48,7 @@ export function PhotoCarousel({ paths, width, height, title }: { paths: string[]
           <AuthImage
             path={item}
             style={{ width, height }}
-            label={`${title}, photo ${i + 1} of ${paths.length}`}
+            label={m.feed.photo(title, i + 1, paths.length)}
           />
         )}
       />

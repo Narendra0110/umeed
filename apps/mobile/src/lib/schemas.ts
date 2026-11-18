@@ -1,11 +1,12 @@
 import { z } from 'zod';
 
+import { msg } from './i18n';
 import { ITEM_CONDITIONS, REPORT_REASONS } from './types';
 
 /**
  * Form rules. They repeat the backend's validation (CreateDonationRequest, CreateClaimRequest,
  * CreateReportRequest) so that mistakes are shown before anything is sent. The backend stays the
- * final check.
+ * final check. Messages are looked up when a rule runs, so they follow the chosen language.
  */
 
 export const MAX_PHOTOS = 5;
@@ -20,27 +21,35 @@ export type Photo = z.infer<typeof photoSchema>;
 export const donationSchema = z.object({
   photos: z
     .array(photoSchema)
-    .min(1, 'Add at least one photo')
-    .max(MAX_PHOTOS, `You can add at most ${MAX_PHOTOS} photos`),
+    .min(1, msg((m) => m.form.addPhoto))
+    .max(MAX_PHOTOS, msg((m) => m.form.maxPhotos)),
   title: z
     .string()
     .trim()
-    .min(3, 'Title must be between 3 and 100 characters')
-    .max(100, 'Title must be between 3 and 100 characters'),
+    .min(3, msg((m) => m.form.titleLength))
+    .max(100, msg((m) => m.form.titleLength)),
   description: z
     .string()
     .trim()
-    .min(10, 'Description must be between 10 and 1000 characters')
-    .max(1000, 'Description must be between 10 and 1000 characters'),
-  categoryId: z.string().min(1, 'Choose a category'),
-  itemCondition: z.enum(ITEM_CONDITIONS, 'Choose the condition'),
-  city: z.string().trim().min(1, 'City is required').max(100, 'City must be at most 100 characters'),
-  area: z.string().trim().min(1, 'Area is required').max(100, 'Area must be at most 100 characters'),
+    .min(10, msg((m) => m.form.descriptionLength))
+    .max(1000, msg((m) => m.form.descriptionLength)),
+  categoryId: z.string().min(1, msg((m) => m.form.chooseCategory)),
+  itemCondition: z.enum(ITEM_CONDITIONS, msg((m) => m.form.chooseCondition)),
+  city: z
+    .string()
+    .trim()
+    .min(1, msg((m) => m.form.cityRequired))
+    .max(100, msg((m) => m.form.cityTooLong)),
+  area: z
+    .string()
+    .trim()
+    .min(1, msg((m) => m.form.areaRequired))
+    .max(100, msg((m) => m.form.areaTooLong)),
   pickupAddress: z
     .string()
     .trim()
-    .min(10, 'Pickup address must be between 10 and 500 characters')
-    .max(500, 'Pickup address must be between 10 and 500 characters'),
+    .min(10, msg((m) => m.form.addressLength))
+    .max(500, msg((m) => m.form.addressLength)),
 });
 export type DonationFormValues = z.input<typeof donationSchema>;
 export type DonationInput = z.output<typeof donationSchema>;
@@ -58,24 +67,57 @@ export type NeedInput = z.output<typeof needSchema>;
 
 /** Offering an item for a need (CreateOfferRequest). */
 export const offerSchema = z.object({
-  donationId: z.string().min(1, 'Choose one of your items'),
-  message: z.string().trim().max(300, 'Message must be at most 300 characters'),
+  donationId: z.string().min(1, msg((m) => m.form.chooseItem)),
+  message: z
+    .string()
+    .trim()
+    .max(300, msg((m) => m.form.messageTooLong)),
 });
 export type OfferFormValues = z.infer<typeof offerSchema>;
 
 export const claimSchema = z.object({
-  message: z.string().trim().max(300, 'Message must be at most 300 characters'),
+  message: z
+    .string()
+    .trim()
+    .max(300, msg((m) => m.form.messageTooLong)),
 });
 export type ClaimFormValues = z.infer<typeof claimSchema>;
 
 export const reportSchema = z
   .object({
-    reason: z.enum(REPORT_REASONS, 'Choose a reason'),
-    details: z.string().trim().max(500, 'Details must be at most 500 characters'),
+    reason: z.enum(REPORT_REASONS, msg((m) => m.form.chooseReason)),
+    details: z
+      .string()
+      .trim()
+      .max(500, msg((m) => m.form.detailsTooLong)),
   })
   .superRefine((value, ctx) => {
     if (value.reason === 'OTHER' && value.details.length === 0) {
-      ctx.addIssue({ code: 'custom', path: ['details'], message: 'Please describe the problem' });
+      ctx.addIssue({ code: 'custom', path: ['details'], message: msg((m) => m.form.describeProblem).error() });
     }
   });
 export type ReportFormValues = z.input<typeof reportSchema>;
+
+/** Login: the 10-digit Indian mobile number without +91. */
+export const phoneSchema = z.object({
+  phone: z
+    .string()
+    .trim()
+    .regex(/^[6-9][0-9]{9}$/, msg((m) => m.form.phoneDigits)),
+});
+
+/** The 6-digit SMS code (login and account deletion). */
+export const codeSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .regex(/^[0-9]{6}$/, msg((m) => m.form.codeDigits)),
+});
+
+export const displayNameSchema = z.object({
+  displayName: z
+    .string()
+    .trim()
+    .min(2, msg((m) => m.form.nameTooShort))
+    .max(80, msg((m) => m.form.nameTooLong)),
+});

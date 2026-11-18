@@ -5,9 +5,11 @@ import { Button, colors, EmptyState, ErrorState, Loading } from '@/components/ui
 import { errorMessage } from '@/lib/api';
 import { type BlockedUser, useBlockedUsers, useUnblockUser } from '@/lib/blocks';
 import { timeAgo } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 
 /** The people I have blocked, with Unblock. */
 export default function BlockedPeopleScreen() {
+  const m = useT();
   const blocked = useBlockedUsers();
   const unblock = useUnblockUser();
 
@@ -21,13 +23,13 @@ export default function BlockedPeopleScreen() {
   }
 
   const confirmUnblock = (person: BlockedUser) =>
-    Alert.alert(`Unblock ${person.name}?`, 'You will see each other’s items again. Claims that were closed stay closed.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(m.blocks.unblockTitle(person.name), m.blocks.unblockMessage, [
+      { text: m.common.cancel, style: 'cancel' },
       {
-        text: 'Unblock',
+        text: m.blocks.unblock,
         onPress: () =>
           unblock.mutate(person.userId, {
-            onError: (error) => Alert.alert('Could not unblock', errorMessage(error)),
+            onError: (error) => Alert.alert(m.blocks.couldNotUnblock, errorMessage(error)),
           }),
       },
     ]);
@@ -39,20 +41,15 @@ export default function BlockedPeopleScreen() {
       style={styles.screen}
       contentContainerStyle={styles.list}
       refreshControl={<RefreshControl refreshing={blocked.isRefetching} onRefresh={() => void blocked.refetch()} />}
-      ListEmptyComponent={
-        <EmptyState
-          title="You have not blocked anyone"
-          message="You can block someone from an item’s page or from the claims on your item."
-        />
-      }
+      ListEmptyComponent={<EmptyState title={m.blocks.emptyTitle} message={m.blocks.emptyMessage} />}
       renderItem={({ item }) => (
         <ListRow
           title={item.name}
-          subtitle={`Blocked ${timeAgo(item.blockedAt)}`}
+          subtitle={m.blocks.blockedAgo(timeAgo(item.blockedAt))}
           actions={
             <View style={styles.flex}>
               <Button
-                title="Unblock"
+                title={m.blocks.unblock}
                 variant="secondary"
                 loading={unblock.isPending && unblock.variables === item.userId}
                 onPress={() => confirmUnblock(item)}

@@ -7,16 +7,18 @@ import { colors, EmptyState, ErrorState, Loading, Pill, Title } from '@/componen
 import { errorMessage } from '@/lib/api';
 import { useConversations } from '@/lib/chat';
 import { timeAgo } from '@/lib/format';
+import { t, useT } from '@/lib/i18n';
 import type { Conversation } from '@/lib/types';
 
 /** Chats: one conversation per handover, newest activity first. */
 export default function ChatsScreen() {
+  const m = useT();
   const conversations = useConversations();
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <Title>Chats</Title>
+        <Title>{m.chats.title}</Title>
       </View>
       {conversations.isPending ? (
         <Loading />
@@ -36,8 +38,8 @@ export default function ChatsScreen() {
           }
           ListEmptyComponent={
             <EmptyState
-              title="No chats yet"
-              message="When a donor chooses you, or you choose someone for your item, you can message each other here."
+              title={m.chats.emptyTitle}
+              message={m.chats.emptyMessage}
             />
           }
           renderItem={({ item }) => (
@@ -55,19 +57,21 @@ export default function ChatsScreen() {
 }
 
 function preview(conversation: Conversation): string {
+  const m = t().chats;
   if (!conversation.lastMessage || !conversation.lastMessageAt) {
-    return conversation.open ? 'Say hello and arrange the pickup.' : 'No messages';
+    return conversation.open ? m.sayHello : m.noMessages;
   }
-  const who = conversation.lastMessageMine ? 'You: ' : '';
+  const who = conversation.lastMessageMine ? m.you : '';
   return `${who}${conversation.lastMessage} · ${timeAgo(conversation.lastMessageAt)}`;
 }
 
 function ConversationPill({ conversation }: { conversation: Conversation }) {
+  const m = useT();
   if (conversation.unreadCount > 0) {
-    return <Pill label={`${conversation.unreadCount} new`} tone="info" />;
+    return <Pill label={m.chats.newCount(conversation.unreadCount)} tone="info" />;
   }
   if (!conversation.open) {
-    return <Pill label="Closed" tone="neutral" />;
+    return <Pill label={m.chats.closed} tone="neutral" />;
   }
   return null;
 }

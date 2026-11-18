@@ -7,12 +7,14 @@ import { AuthImage } from '@/components/photos';
 import { Body, Button, colors, EmptyState, ErrorBanner, ErrorState, Field, Loading, Screen, Title } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { useMyDonations } from '@/lib/donations';
+import { useT } from '@/lib/i18n';
 import { offerableItems, useMakeOffer, useNeed } from '@/lib/needs';
 import { offerSchema, type OfferFormValues } from '@/lib/schemas';
 
 /** Offer one of my available items for a need, with an optional message. */
 export default function OfferScreen() {
   'use no memo';
+  const m = useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const need = useNeed(id);
   const mine = useMyDonations();
@@ -46,9 +48,9 @@ export default function OfferScreen() {
     return (
       <Screen>
         <EmptyState
-          title="You have no items to offer"
-          message="Post the item under Donate first, then come back to offer it."
-          action={<Button title="Give an item" onPress={() => router.navigate('/donate')} />}
+          title={m.offer.noItemsTitle}
+          message={m.offer.noItemsMessage}
+          action={<Button title={m.common.giveAnItem} onPress={() => router.navigate('/donate')} />}
         />
       </Screen>
     );
@@ -57,7 +59,7 @@ export default function OfferScreen() {
   const onSubmit = handleSubmit((values) =>
     offer.mutate(values, {
       onSuccess: () => {
-        Alert.alert('Offer sent', `${need.data.requesterName} will be told about your offer.`);
+        Alert.alert(m.offer.sentTitle, m.offer.sentMessage(need.data.requesterName));
         router.back();
       },
     }),
@@ -65,8 +67,8 @@ export default function OfferScreen() {
 
   return (
     <Screen scroll>
-      <Title>Offer for “{need.data.title}”</Title>
-      <Body>Choose one of your items. It stays listed for others until {need.data.requesterName} chooses.</Body>
+      <Title>{m.offer.title(need.data.title)}</Title>
+      <Body>{m.offer.intro(need.data.requesterName)}</Body>
       <Controller
         control={control}
         name="donationId"
@@ -97,8 +99,8 @@ export default function OfferScreen() {
         name="message"
         render={({ field: { onChange, onBlur, value } }) => (
           <Field
-            label="Message (optional)"
-            placeholder="For example, it is size 5 and barely used"
+            label={m.offer.message}
+            placeholder={m.offer.messagePlaceholder}
             multiline
             maxLength={300}
             value={value}
@@ -109,7 +111,7 @@ export default function OfferScreen() {
         )}
       />
       <ErrorBanner message={offer.isError ? errorMessage(offer.error) : null} />
-      <Button title="Send offer" onPress={onSubmit} loading={offer.isPending} />
+      <Button title={m.offer.send} onPress={onSubmit} loading={offer.isPending} />
     </Screen>
   );
 }

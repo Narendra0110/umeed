@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Body, Button, colors, ErrorBanner, Field } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
 import { useCreateClaim } from '@/lib/claims';
+import { useT } from '@/lib/i18n';
 import { claimSchema, type ClaimFormValues } from '@/lib/schemas';
 
 type ClaimSheetProps = {
@@ -20,6 +21,7 @@ type ClaimSheetProps = {
 /** Asks for an optional message to the donor, then sends the claim. */
 export function ClaimSheet({ donationId, donationTitle, donorName, visible, onClose, onClaimed }: ClaimSheetProps) {
   'use no memo';
+  const m = useT();
   const claim = useCreateClaim();
   const {
     control,
@@ -51,24 +53,21 @@ export function ClaimSheet({ donationId, donationTitle, donorName, visible, onCl
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
-      <Pressable style={styles.backdrop} onPress={close} accessibilityLabel="Close" />
+      <Pressable style={styles.backdrop} onPress={close} accessibilityLabel={m.common.close} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <SafeAreaView edges={['bottom']} style={styles.sheet}>
           <View style={styles.handle} />
           <Text style={styles.title} accessibilityRole="header">
-            Claim “{donationTitle}”
+            {m.claimSheet.title(donationTitle)}
           </Text>
-          <Body>
-            {donorName} will see your name and message. If they choose you, you will both see each other&apos;s phone
-            number and the pickup address.
-          </Body>
+          <Body>{m.claimSheet.intro(donorName)}</Body>
           <Controller
             control={control}
             name="message"
             render={({ field: { onChange, onBlur, value } }) => (
               <Field
-                label="Message to the donor (optional)"
-                placeholder="For example, why you need it and when you can collect it"
+                label={m.claimSheet.message}
+                placeholder={m.claimSheet.messagePlaceholder}
                 multiline
                 maxLength={300}
                 value={value}
@@ -79,8 +78,8 @@ export function ClaimSheet({ donationId, donationTitle, donorName, visible, onCl
             )}
           />
           <ErrorBanner message={claim.isError && !serverFieldError ? errorMessage(claim.error) : null} />
-          <Button title="Send claim" onPress={onSubmit} loading={claim.isPending} />
-          <Button title="Cancel" variant="secondary" onPress={close} />
+          <Button title={m.claimSheet.send} onPress={onSubmit} loading={claim.isPending} />
+          <Button title={m.common.cancel} variant="secondary" onPress={close} />
         </SafeAreaView>
       </KeyboardAvoidingView>
     </Modal>

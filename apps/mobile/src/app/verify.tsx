@@ -2,23 +2,19 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Redirect, router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import { Body, Button, ErrorBanner, Field, Screen, Title } from '@/components/ui';
 import { firebaseErrorMessage, useAuthUser } from '@/lib/auth';
+import { useT } from '@/lib/i18n';
 import { useLoginStore } from '@/lib/login-store';
+import { codeSchema } from '@/lib/schemas';
 
-const schema = z.object({
-  code: z
-    .string()
-    .trim()
-    .regex(/^[0-9]{6}$/, 'Enter the 6-digit code'),
-});
-
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<typeof codeSchema>;
 
 export default function VerifyScreen() {
   'use no memo';
+  const m = useT();
   const { phoneNumber, confirmation, clear } = useLoginStore();
   const { user } = useAuthUser();
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +22,7 @@ export default function VerifyScreen() {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { code: '' } });
+  } = useForm<FormValues>({ resolver: zodResolver(codeSchema), defaultValues: { code: '' } });
 
   // On Android the code can be read automatically, which signs the user in without typing it.
   useEffect(() => {
@@ -53,14 +49,14 @@ export default function VerifyScreen() {
 
   return (
     <Screen>
-      <Title>Enter the code</Title>
-      <Body>We sent a 6-digit code to {phoneNumber}.</Body>
+      <Title>{m.verify.title}</Title>
+      <Body>{m.verify.sentTo(phoneNumber ?? '')}</Body>
       <Controller
         control={control}
         name="code"
         render={({ field: { onChange, onBlur, value } }) => (
           <Field
-            label="Code"
+            label={m.common.code}
             placeholder="123456"
             keyboardType="number-pad"
             autoComplete="sms-otp"
@@ -74,8 +70,8 @@ export default function VerifyScreen() {
         )}
       />
       <ErrorBanner message={error} />
-      <Button title="Verify" onPress={onSubmit} loading={isSubmitting} />
-      <Button title="Use a different number" variant="secondary" onPress={() => router.back()} />
+      <Button title={m.verify.verify} onPress={onSubmit} loading={isSubmitting} />
+      <Button title={m.verify.otherNumber} variant="secondary" onPress={() => router.back()} />
     </Screen>
   );
 }

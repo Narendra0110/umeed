@@ -47,6 +47,31 @@ public class UserService {
     }
 
     /**
+     * Sets the app language ("en" or "hi") of the user identified by a verified Firebase identity.
+     * Allowed for suspended accounts too, so the suspension notice can be read in their language.
+     */
+    @Transactional
+    public UserResponse updateLanguage(String firebaseUid, String language) {
+        User user = userRepository.findByFirebaseUid(firebaseUid)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (user.getStatus() == User.Status.DELETED) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Account is not active");
+        }
+        user.changeLanguage(language);
+        return UserResponse.from(user);
+    }
+
+    /** Each user's language ("en" or "hi"), for notifications. Unknown ids are left out. */
+    @Transactional(readOnly = true)
+    public Map<UUID, String> languagesByIds(Collection<UUID> userIds) {
+        Map<UUID, String> languages = new HashMap<>();
+        for (User user : userRepository.findAllById(userIds)) {
+            languages.put(user.getId(), user.getLanguage());
+        }
+        return languages;
+    }
+
+    /**
      * Returns the active user for a verified Firebase identity. For use by other modules.
      */
     @Transactional(readOnly = true)

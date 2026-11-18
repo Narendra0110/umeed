@@ -1,4 +1,5 @@
-import { ApiError, errorMessage, isAccountNotActive, SUSPENDED_MESSAGE } from '@/lib/api';
+import { ApiError, errorMessage, isAccountNotActive } from '@/lib/api';
+import { messagesFor } from '@/lib/i18n';
 import { reportPath } from '@/lib/reports';
 
 jest.mock('@react-native-firebase/auth', () => ({ getAuth: jest.fn() }));
@@ -14,7 +15,11 @@ describe('suspended accounts', () => {
   it('turns the backend refusal into a clear explanation', () => {
     const refusal = new ApiError(403, 'Account is not active');
     expect(isAccountNotActive(refusal)).toBe(true);
-    expect(errorMessage(refusal)).toBe(SUSPENDED_MESSAGE);
+    expect(errorMessage(refusal)).toBe(messagesFor('en').errors.suspended);
+  });
+
+  it('also recognises the refusal in Hindi', () => {
+    expect(isAccountNotActive(new ApiError(403, 'खाता सक्रिय नहीं है'))).toBe(true);
   });
 
   it('leaves other refusals as they are', () => {

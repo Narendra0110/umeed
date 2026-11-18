@@ -1,6 +1,8 @@
 import { getAuth, onAuthStateChanged } from '@react-native-firebase/auth';
 import { useEffect, useState } from 'react';
 
+import { t } from './i18n';
+
 export type AuthUser = ReturnType<typeof getAuth>['currentUser'];
 
 /** The signed-in Firebase user, kept up to date. */
@@ -18,19 +20,20 @@ export function useAuthUser(): { initializing: boolean; user: AuthUser } {
 /** Turns a Firebase error into a message for the user. */
 export function firebaseErrorMessage(error: unknown): string {
   const code = typeof error === 'object' && error !== null && 'code' in error ? String(error.code) : '';
+  const m = t().firebase;
   switch (code) {
     case 'auth/invalid-phone-number':
-      return 'This phone number is not valid.';
+      return m.invalidPhone;
     case 'auth/invalid-verification-code':
-      return 'The code is not correct. Please check and try again.';
+      return m.wrongCode;
     case 'auth/session-expired':
     case 'auth/code-expired':
-      return 'The code has expired. Please request a new one.';
+      return m.codeExpired;
     case 'auth/too-many-requests':
-      return 'Too many attempts. Please wait a while and try again.';
+      return m.tooMany;
     case 'auth/network-request-failed':
-      return 'No internet connection. Please try again.';
+      return m.offline;
     default:
-      return 'Login failed. Please try again.';
+      return m.failed;
   }
 }

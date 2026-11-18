@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { type Edge, SafeAreaView } from 'react-native-safe-area-context';
 
+import { type Language, useLanguageStore, useT } from '@/lib/i18n';
+
 export const colors = {
   primary: '#208AEF',
   primaryPressed: '#1670C4',
@@ -256,11 +258,38 @@ export function ErrorState({
   onRetry: () => void;
   retrying?: boolean;
 }) {
+  const m = useT();
   return (
     <View style={styles.state}>
-      <Text style={styles.stateTitle}>Could not load this</Text>
+      <Text style={styles.stateTitle}>{m.common.couldNotLoad}</Text>
       <Text style={styles.stateMessage}>{message}</Text>
-      <Button title="Try again" onPress={onRetry} loading={retrying} />
+      <Button title={m.common.tryAgain} onPress={onRetry} loading={retrying} />
+    </View>
+  );
+}
+
+/**
+ * English / हिन्दी switch. Each choice is written in its own language so anyone can find theirs.
+ * onChange is called after the app has switched; the caller may also save it to the account.
+ */
+export function LanguageSwitch({ onChange }: { onChange?: (language: Language) => void }) {
+  const m = useT();
+  const language = useLanguageStore((state) => state.language);
+  const setLanguage = useLanguageStore((state) => state.setLanguage);
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{m.language.label} / Language</Text>
+      <Segmented
+        choices={[
+          { value: 'en', label: 'English' },
+          { value: 'hi', label: 'हिन्दी' },
+        ]}
+        value={language}
+        onChange={(value: Language) => {
+          setLanguage(value, true);
+          onChange?.(value);
+        }}
+      />
     </View>
   );
 }

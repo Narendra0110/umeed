@@ -19,7 +19,8 @@ import {
 } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
 import { useCategories, useCreateDonation } from '@/lib/donations';
-import { conditionLabels } from '@/lib/format';
+import { categoryLabel, conditionLabel } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import { useCurrentLocation } from '@/lib/location';
 import { pickFromGallery, type PickResult, takePhoto } from '@/lib/photos';
 import { useProfile } from '@/lib/profile';
@@ -37,16 +38,15 @@ const emptyForm: DonationFormValues = {
   pickupAddress: '',
 };
 
-const conditionChoices = ITEM_CONDITIONS.map((value) => ({ value, label: conditionLabels[value] }));
-
 /** Donate has two forms: give an item, or ask for something you need. */
 export default function DonateScreen() {
+  const m = useT();
   const [mode, setMode] = useState<'give' | 'ask'>('give');
   const header = (
     <Segmented
       choices={[
-        { value: 'give', label: 'Give an item' },
-        { value: 'ask', label: 'Ask for something' },
+        { value: 'give', label: m.common.giveAnItem },
+        { value: 'ask', label: m.common.askForSomething },
       ]}
       value={mode}
       onChange={setMode}
@@ -58,6 +58,7 @@ export default function DonateScreen() {
 /** Post an item with photos. The pickup address stays private until a receiver is chosen. */
 function GiveItemForm({ header }: { header: ReactNode }) {
   'use no memo';
+  const m = useT();
   const categories = useCategories();
   const location = useCurrentLocation();
   const profile = useProfile(true);
@@ -88,7 +89,7 @@ function GiveItemForm({ header }: { header: ReactNode }) {
         setValue('photos', [...photos, ...result.photos].slice(0, MAX_PHOTOS), { shouldValidate: true });
       }
     } catch {
-      setPhotoError('Could not add that photo. Please try another one.');
+      setPhotoError(m.donate.photoFailed);
     } finally {
       setPicking(false);
     }
@@ -112,7 +113,7 @@ function GiveItemForm({ header }: { header: ReactNode }) {
       {
         onSuccess: (donation) => {
           reset(emptyForm);
-          Alert.alert('Posted', 'Your item is now in the feed. You will see claims under Activity.');
+          Alert.alert(m.donate.postedTitle, m.donate.postedMessage);
           router.push(`/donation/${donation.id}`);
         },
       },
@@ -125,28 +126,27 @@ function GiveItemForm({ header }: { header: ReactNode }) {
 
   const serverErrors = create.error instanceof ApiError ? create.error.fieldErrors : [];
   const serverError = (field: string) => serverErrors.find((f) => f.field === field)?.message;
-  const categoryChoices = (categories.data ?? []).map((c) => ({ value: c.id, label: c.name }));
+  const categoryChoices = (categories.data ?? []).map((c) => ({ value: c.id, label: categoryLabel(c) }));
+  const conditionChoices = ITEM_CONDITIONS.map((value) => ({ value, label: conditionLabel(value) }));
 
   return (
     <Screen scroll edges={['top', 'left', 'right']}>
       {header}
-      <Title>Give an item</Title>
-      <Body>Umeed is free. Never ask for or accept money for an item.</Body>
+      <Title>{m.donate.title}</Title>
+      <Body>{m.donate.free}</Body>
 
       <View style={styles.field}>
-        <Text style={styles.label}>
-          Photos ({photos.length}/{MAX_PHOTOS})
-        </Text>
+        <Text style={styles.label}>{m.donate.photos(photos.length, MAX_PHOTOS)}</Text>
         <View style={styles.photoRow}>
           {photos.map((photo, index) => (
             <View key={photo.uri} style={styles.photoBox}>
-              <Image source={{ uri: photo.uri }} style={styles.photo} accessibilityLabel={`Photo ${index + 1}`} />
-              {index === 0 ? <Text style={styles.cover}>Cover</Text> : null}
+              <Image source={{ uri: photo.uri }} style={styles.photo} accessibilityLabel={m.donate.photoLabel(index + 1)} />
+              {index === 0 ? <Text style={styles.cover}>{m.donate.cover}</Text> : null}
               <Pressable
                 onPress={() => removePhoto(photo.uri)}
                 style={styles.remove}
                 accessibilityRole="button"
-                accessibilityLabel={`Remove photo ${index + 1}`}
+                accessibilityLabel={m.donate.removePhoto(index + 1)}
                 hitSlop={8}>
                 <Text style={styles.removeText}>×</Text>
               </Pressable>
@@ -156,11 +156,11 @@ function GiveItemForm({ header }: { header: ReactNode }) {
         {photos.length < MAX_PHOTOS ? (
           <View style={styles.photoButtons}>
             <View style={styles.flex}>
-              <Button title="Camera" variant="secondary" loading={picking} onPress={() => addPhotos(takePhoto)} />
+              <Button title={m.donate.camera} variant="secondary" loading={picking} onPress={() => addPhotos(takePhoto)} />
             </View>
             <View style={styles.flex}>
               <Button
-                title="Gallery"
+                title={m.donate.gallery}
                 variant="secondary"
                 loading={picking}
                 onPress={() => addPhotos(() => pickFromGallery(MAX_PHOTOS - photos.length))}
@@ -178,8 +178,8 @@ function GiveItemForm({ header }: { header: ReactNode }) {
         name="title"
         render={({ field: { onChange, onBlur, value } }) => (
           <Field
-            label="Title"
-            placeholder="For example, School bag, good condition"
+            label={m.donate.titleLabel}
+            placeholder={m.donate.titlePlaceholder}
             maxLength={100}
             value={value}
             onChangeText={onChange}
@@ -193,8 +193,8 @@ function GiveItemForm({ header }: { header: ReactNode }) {
         name="description"
         render={({ field: { onChange, onBlur, value } }) => (
           <Field
-            label="Description"
-            placeholder="Size, age, anything missing or damaged"
+            label={m.donate.description}
+            placeholder={m.donate.descriptionPlaceholder}
             multiline
             maxLength={1000}
             value={value}
@@ -205,14 +205,14 @@ function GiveItemForm({ header }: { header: ReactNode }) {
         )}
       />
       {categories.isError ? (
-        <ErrorBanner message={`Categories could not be loaded. ${errorMessage(categories.error)}`} />
+        <ErrorBanner message={m.common.categoriesFailed(errorMessage(categories.error))} />
       ) : (
         <Controller
           control={control}
           name="categoryId"
           render={({ field: { onChange, value } }) => (
             <ChoiceChips
-              label="Category"
+              label={m.common.category}
               choices={categoryChoices}
               value={value || undefined}
               onChange={onChange}
@@ -226,7 +226,7 @@ function GiveItemForm({ header }: { header: ReactNode }) {
         name="itemCondition"
         render={({ field: { onChange, value } }) => (
           <ChoiceChips
-            label="Condition"
+            label={m.donate.condition}
             choices={conditionChoices}
             value={value}
             onChange={onChange}
@@ -239,8 +239,8 @@ function GiveItemForm({ header }: { header: ReactNode }) {
         name="city"
         render={({ field: { onChange, onBlur, value } }) => (
           <Field
-            label="City"
-            placeholder="For example, Pune"
+            label={m.common.city}
+            placeholder={m.common.cityPlaceholder}
             autoCapitalize="words"
             maxLength={100}
             value={value}
@@ -255,11 +255,11 @@ function GiveItemForm({ header }: { header: ReactNode }) {
         name="area"
         render={({ field: { onChange, onBlur, value } }) => (
           <Field
-            label="Area"
-            placeholder="For example, Kothrud"
+            label={m.common.area}
+            placeholder={m.common.areaPlaceholder}
             autoCapitalize="words"
             maxLength={100}
-            hint="City and area are shown to everyone."
+            hint={m.donate.areaHint}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -272,11 +272,11 @@ function GiveItemForm({ header }: { header: ReactNode }) {
         name="pickupAddress"
         render={({ field: { onChange, onBlur, value } }) => (
           <Field
-            label="Pickup address"
-            placeholder="House number, street, landmark"
+            label={m.donate.address}
+            placeholder={m.donate.addressPlaceholder}
             multiline
             maxLength={500}
-            hint="Private. Shown only to the person you choose."
+            hint={m.donate.addressHint}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -293,7 +293,7 @@ function GiveItemForm({ header }: { header: ReactNode }) {
       />
 
       <ErrorBanner message={create.isError && serverErrors.length === 0 ? errorMessage(create.error) : null} />
-      <Button title="Post item" onPress={onSubmit} loading={create.isPending} disabled={!coords} />
+      <Button title={m.donate.post} onPress={onSubmit} loading={create.isPending} disabled={!coords} />
     </Screen>
   );
 }
@@ -309,20 +309,19 @@ function LocationStatus({
   failed: boolean;
   onRetry: () => void;
 }) {
+  const m = useT();
   if (pending) {
-    return <Body>Finding your approximate location…</Body>;
+    return <Body>{m.common.findingLocation}</Body>;
   }
   if (granted) {
-    return <Body>Your approximate location (about 1 km) is used to show the item to people nearby.</Body>;
+    return <Body>{m.donate.locationUsed}</Body>;
   }
   return (
     <View style={styles.locationBox}>
       <Text style={styles.locationText}>
-        {failed
-          ? 'Your location could not be found.'
-          : 'Location is needed to post, so that people nearby can find the item. Only an approximate position (about 1 km) is saved.'}
+        {failed ? m.donate.locationFailed : m.donate.locationNeeded}
       </Text>
-      <Button title="Allow location" variant="secondary" onPress={onRetry} />
+      <Button title={m.common.allowLocation} variant="secondary" onPress={onRetry} />
     </View>
   );
 }

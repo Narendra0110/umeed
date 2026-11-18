@@ -6,10 +6,11 @@ import { Body, Button, colors, EmptyState, ErrorState, LinkButton, Loading, Pill
 import { ApiError, errorMessage } from '@/lib/api';
 import { confirmBlock, useBlockUser } from '@/lib/blocks';
 import { timeAgo } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import {
   canChoose,
-  needStatusLabels,
-  offerStatusLabels,
+  needStatusLabel,
+  offerStatusLabel,
   useAcceptOffer,
   useCloseNeed,
   useNeed,
@@ -23,6 +24,7 @@ import type { Need, Offer } from '@/lib/types';
  * Everyone else can offer one of their available items.
  */
 export default function NeedScreen() {
+  const m = useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const need = useNeed(id);
   const profile = useProfile(true);
@@ -39,7 +41,7 @@ export default function NeedScreen() {
     return (
       <Screen>
         {need.error instanceof ApiError && need.error.status === 404 ? (
-          <EmptyState title="This need is not available" message="It may have been closed." />
+          <EmptyState title={m.need.notAvailableTitle} message={m.need.notAvailableMessage} />
         ) : (
           <ErrorState message={errorMessage(need.error)} onRetry={() => need.refetch()} retrying={need.isFetching} />
         )}
@@ -51,31 +53,27 @@ export default function NeedScreen() {
   const open = item.status === 'OPEN';
 
   const confirmClose = () =>
-    Alert.alert('Close this need?', 'People will no longer see it, and offers still waiting will be declined.', [
-      { text: 'Keep it open', style: 'cancel' },
+    Alert.alert(m.need.closeTitle, m.need.closeMessage, [
+      { text: m.need.keepOpen, style: 'cancel' },
       {
-        text: 'Close',
+        text: m.need.close,
         style: 'destructive',
-        onPress: () => close.mutate(undefined, { onError: (error) => Alert.alert('Could not close', errorMessage(error)) }),
+        onPress: () => close.mutate(undefined, { onError: (error) => Alert.alert(m.need.couldNotClose, errorMessage(error)) }),
       },
     ]);
 
   const confirmChoose = (offer: Offer) =>
-    Alert.alert(
-      `Choose “${offer.donationTitle}” from ${offer.donorName}?`,
-      'The item is reserved for you. You will both see each other’s phone number and you will see the pickup address. Your need will be marked fulfilled and other offers declined.',
-      [
-        { text: 'Not yet', style: 'cancel' },
-        {
-          text: 'Choose',
-          onPress: () =>
-            accept.mutate(offer.id, {
-              onSuccess: (result) => router.replace(`/donation/${result.donationId}/pickup`),
-              onError: (error) => Alert.alert('Could not choose this offer', errorMessage(error)),
-            }),
-        },
-      ],
-    );
+    Alert.alert(m.need.chooseTitle(offer.donationTitle, offer.donorName), m.need.chooseMessage, [
+      { text: m.common.notYet, style: 'cancel' },
+      {
+        text: m.need.choose,
+        onPress: () =>
+          accept.mutate(offer.id, {
+            onSuccess: (result) => router.replace(`/donation/${result.donationId}/pickup`),
+            onError: (error) => Alert.alert(m.need.couldNotChoose, errorMessage(error)),
+          }),
+      },
+    ]);
 
   return (
     <Screen scroll>
@@ -83,12 +81,10 @@ export default function NeedScreen() {
         {item.title}
       </Text>
       <View style={styles.row}>
-        <Pill label={needStatusLabels[item.status]} tone={open ? 'success' : 'neutral'} />
-        {isMine ? <Pill label="Your need" tone="warning" /> : null}
+        <Pill label={needStatusLabel(item.status)} tone={open ? 'success' : 'neutral'} />
+        {isMine ? <Pill label={m.need.yourNeed} tone="warning" /> : null}
       </View>
-      <Text style={styles.meta}>
-        {item.area}, {item.city} · asked by {item.requesterName} · {timeAgo(item.createdAt)}
-      </Text>
+      <Text style={styles.meta}>{m.need.askedBy(item.area, item.city, item.requesterName, timeAgo(item.createdAt))}</Text>
       <Text style={styles.description}>{item.description}</Text>
 
       {isMine ? (
@@ -103,27 +99,27 @@ export default function NeedScreen() {
         />
       ) : open ? (
         <View style={styles.actions}>
-          <Button title="Offer an item" onPress={() => router.push(`/need/${item.id}/offer`)} />
-          <Body>You can offer one of your listed items. If you have not posted it yet, post it first under Donate.</Body>
+          <Button title={m.need.offerItem} onPress={() => router.push(`/need/${item.id}/offer`)} />
+          <Body>{m.need.offerHint}</Body>
         </View>
       ) : (
-        <Body>This need is no longer open.</Body>
+        <Body>{m.need.noLongerOpen}</Body>
       )}
 
       {isMine && open ? (
         <View style={styles.actions}>
-          <Button title="Close this need" variant="danger" onPress={confirmClose} loading={close.isPending} />
+          <Button title={m.need.closeNeed} variant="danger" onPress={confirmClose} loading={close.isPending} />
         </View>
       ) : null}
       {!isMine ? (
         <View style={styles.links}>
           <LinkButton
-            title="Report"
+            title={m.common.report}
             color={colors.muted}
             onPress={() => router.push(`/need/${item.id}/report`)}
           />
           <LinkButton
-            title={`Block ${item.requesterName}`}
+            title={m.common.block(item.requesterName)}
             color={colors.muted}
             onPress={() =>
               confirmBlock(item.requesterName, (handlers) => block.mutate(item.requesterId, handlers), () => router.back())
@@ -146,6 +142,7 @@ type MyNeedOffersProps = {
 };
 
 function MyNeedOffers({ need, offers, loading, error, onRetry, choosing, onChoose }: MyNeedOffersProps) {
+  const m = useT();
   if (loading) {
     return <Loading />;
   }
@@ -156,25 +153,25 @@ function MyNeedOffers({ need, offers, loading, error, onRetry, choosing, onChoos
     return (
       <Body>
         {need.status === 'OPEN'
-          ? 'No offers yet. You will get a notification when someone offers an item.'
-          : 'There were no offers.'}
+          ? m.need.noOffersYet
+          : m.need.noOffers}
       </Body>
     );
   }
   return (
     <View style={styles.offers}>
-      <Text style={styles.section}>Offers</Text>
+      <Text style={styles.section}>{m.need.offers}</Text>
       {offers.map((offer) => (
         <ListRow
           key={offer.id}
-          title={`${offer.donationTitle} · from ${offer.donorName}`}
+          title={m.need.offerRow(offer.donationTitle, offer.donorName)}
           subtitle={`${offer.message ? `“${offer.message}” · ` : ''}${timeAgo(offer.createdAt)}${
-            offer.status === 'PENDING' && offer.donationStatus !== 'AVAILABLE' ? '\nThis item is no longer available.' : ''
+            offer.status === 'PENDING' && offer.donationStatus !== 'AVAILABLE' ? `\n${m.need.unavailable}` : ''
           }`}
           imagePath={offer.donationImageUrl ?? undefined}
           extra={
             <Pill
-              label={offerStatusLabels[offer.status]}
+              label={offerStatusLabel(offer.status)}
               tone={offer.status === 'ACCEPTED' ? 'success' : offer.status === 'PENDING' ? 'info' : 'neutral'}
             />
           }
@@ -183,7 +180,7 @@ function MyNeedOffers({ need, offers, loading, error, onRetry, choosing, onChoos
             canChoose(offer, need) ? (
               <View style={styles.flex}>
                 <Button
-                  title="Choose this"
+                  title={m.need.chooseThis}
                   loading={choosing === offer.id}
                   disabled={choosing !== undefined}
                   onPress={() => onChoose(offer)}
@@ -192,7 +189,7 @@ function MyNeedOffers({ need, offers, loading, error, onRetry, choosing, onChoos
             ) : offer.status === 'ACCEPTED' ? (
               <View style={styles.flex}>
                 <Button
-                  title="Pickup details"
+                  title={m.common.pickupDetails}
                   variant="secondary"
                   onPress={() => router.push(`/donation/${offer.donationId}/pickup`)}
                 />

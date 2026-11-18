@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 
 import { apiFetch, errorMessage } from './api';
+import { t } from './i18n';
 
 export type BlockedUser = {
   userId: string;
@@ -49,23 +50,20 @@ export function confirmBlock(
   block: (onDone: { onSuccess: () => void; onError: (error: unknown) => void }) => void,
   afterBlocked?: () => void,
 ) {
-  Alert.alert(
-    `Block ${name}?`,
-    'You will not see each other’s items or be able to claim them, and any open claims between you will be closed. You can unblock them later from your Profile.',
-    [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Block',
-        style: 'destructive',
-        onPress: () =>
-          block({
-            onSuccess: () => {
-              Alert.alert('Blocked', `You will no longer see items from ${name}.`);
-              afterBlocked?.();
-            },
-            onError: (error) => Alert.alert('Could not block', errorMessage(error)),
-          }),
-      },
-    ],
-  );
+  const m = t();
+  Alert.alert(m.blocks.blockTitle(name), m.blocks.blockMessage, [
+    { text: m.common.cancel, style: 'cancel' },
+    {
+      text: m.blocks.block,
+      style: 'destructive',
+      onPress: () =>
+        block({
+          onSuccess: () => {
+            Alert.alert(m.blocks.blockedTitle, m.blocks.blockedMessage(name));
+            afterBlocked?.();
+          },
+          onError: (error) => Alert.alert(m.blocks.couldNotBlock, errorMessage(error)),
+        }),
+    },
+  ]);
 }

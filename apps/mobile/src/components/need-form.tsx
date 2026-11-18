@@ -8,7 +8,9 @@ import { Body, Button, ChoiceChips, colors, ErrorBanner, Field, Loading, Screen,
 import { ApiError, errorMessage } from '@/lib/api';
 import { useCategories } from '@/lib/donations';
 import { useCurrentLocation } from '@/lib/location';
+import { useT } from '@/lib/i18n';
 import { useCreateNeed } from '@/lib/needs';
+import { categoryLabel } from '@/lib/format';
 import { needSchema, type NeedFormValues, type NeedInput } from '@/lib/schemas';
 
 const emptyForm: NeedFormValues = { title: '', description: '', categoryId: '', city: '', area: '' };
@@ -16,6 +18,7 @@ const emptyForm: NeedFormValues = { title: '', description: '', categoryId: '', 
 /** Donate, "Ask for something": post a need. No photos and no address; donors offer their own items. */
 export function NeedForm({ header }: { header: ReactNode }) {
   'use no memo';
+  const m = useT();
   const categories = useCategories();
   const location = useCurrentLocation();
   const create = useCreateNeed();
@@ -37,7 +40,7 @@ export function NeedForm({ header }: { header: ReactNode }) {
       {
         onSuccess: (need) => {
           reset(emptyForm);
-          Alert.alert('Posted', 'People nearby can now offer you an item. You will be notified of each offer.');
+          Alert.alert(m.donate.postedTitle, m.needForm.postedMessage);
           router.push(`/need/${need.id}`);
         },
       },
@@ -50,20 +53,20 @@ export function NeedForm({ header }: { header: ReactNode }) {
 
   const serverErrors = create.error instanceof ApiError ? create.error.fieldErrors : [];
   const serverError = (field: string) => serverErrors.find((f) => f.field === field)?.message;
-  const categoryChoices = (categories.data ?? []).map((c) => ({ value: c.id, label: c.name }));
+  const categoryChoices = (categories.data ?? []).map((c) => ({ value: c.id, label: categoryLabel(c) }));
 
   return (
     <Screen scroll edges={['top', 'left', 'right']}>
       {header}
-      <Title>Ask for something</Title>
-      <Body>Tell people nearby what you need. Donors can offer one of their items, and you choose.</Body>
+      <Title>{m.common.askForSomething}</Title>
+      <Body>{m.needForm.intro}</Body>
       <Controller
         control={control}
         name="title"
         render={({ field: { onChange, onBlur, value } }) => (
           <Field
-            label="What do you need?"
-            placeholder="For example, School shoes, size 5"
+            label={m.needForm.what}
+            placeholder={m.needForm.whatPlaceholder}
             maxLength={100}
             value={value}
             onChangeText={onChange}
@@ -77,8 +80,8 @@ export function NeedForm({ header }: { header: ReactNode }) {
         name="description"
         render={({ field: { onChange, onBlur, value } }) => (
           <Field
-            label="Details"
-            placeholder="Who it is for, size, anything that helps"
+            label={m.needForm.details}
+            placeholder={m.needForm.detailsPlaceholder}
             multiline
             maxLength={1000}
             value={value}
@@ -89,14 +92,14 @@ export function NeedForm({ header }: { header: ReactNode }) {
         )}
       />
       {categories.isError ? (
-        <ErrorBanner message={`Categories could not be loaded. ${errorMessage(categories.error)}`} />
+        <ErrorBanner message={m.common.categoriesFailed(errorMessage(categories.error))} />
       ) : (
         <Controller
           control={control}
           name="categoryId"
           render={({ field: { onChange, value } }) => (
             <ChoiceChips
-              label="Category"
+              label={m.common.category}
               choices={categoryChoices}
               value={value || undefined}
               onChange={onChange}
@@ -110,8 +113,8 @@ export function NeedForm({ header }: { header: ReactNode }) {
         name="city"
         render={({ field: { onChange, onBlur, value } }) => (
           <Field
-            label="City"
-            placeholder="For example, Pune"
+            label={m.common.city}
+            placeholder={m.common.cityPlaceholder}
             autoCapitalize="words"
             maxLength={100}
             value={value}
@@ -126,11 +129,11 @@ export function NeedForm({ header }: { header: ReactNode }) {
         name="area"
         render={({ field: { onChange, onBlur, value } }) => (
           <Field
-            label="Area"
-            placeholder="For example, Kothrud"
+            label={m.common.area}
+            placeholder={m.common.areaPlaceholder}
             autoCapitalize="words"
             maxLength={100}
-            hint="City and area are shown to everyone. No address is needed."
+            hint={m.needForm.areaHint}
             value={value}
             onChangeText={onChange}
             onBlur={onBlur}
@@ -139,20 +142,17 @@ export function NeedForm({ header }: { header: ReactNode }) {
         )}
       />
       {location.isPending || location.isFetching ? (
-        <Body>Finding your approximate location…</Body>
+        <Body>{m.common.findingLocation}</Body>
       ) : coords ? (
-        <Body>Your approximate location (about 1 km) is used to show your need to people nearby.</Body>
+        <Body>{m.needForm.locationUsed}</Body>
       ) : (
         <View style={styles.locationBox}>
-          <Text style={styles.locationText}>
-            Location is needed so that people nearby can see what you need. Only an approximate position (about 1
-            km) is saved.
-          </Text>
-          <Button title="Allow location" variant="secondary" onPress={() => location.refetch()} />
+          <Text style={styles.locationText}>{m.needForm.locationNeeded}</Text>
+          <Button title={m.common.allowLocation} variant="secondary" onPress={() => location.refetch()} />
         </View>
       )}
       <ErrorBanner message={create.isError && serverErrors.length === 0 ? errorMessage(create.error) : null} />
-      <Button title="Post what I need" onPress={onSubmit} loading={create.isPending} disabled={!coords} />
+      <Button title={m.needForm.post} onPress={onSubmit} loading={create.isPending} disabled={!coords} />
     </Screen>
   );
 }

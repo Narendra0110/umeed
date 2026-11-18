@@ -10,7 +10,8 @@ import { Button, colors, EmptyState, ErrorState, LinkButton, Loading, Pill, Segm
 import { errorMessage } from '@/lib/api';
 import { useFeed } from '@/lib/donations';
 import { useSkipDonation } from '@/lib/explore';
-import { conditionLabels, type Coordinates, distanceKm, formatDistance } from '@/lib/format';
+import { conditionLabel, type Coordinates, distanceKm, formatDistance } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import { useCurrentLocation } from '@/lib/location';
 import type { Donation } from '@/lib/types';
 
@@ -26,6 +27,7 @@ const NOTICE_MS = 3500;
  * After a claim the feed refreshes, the item drops out and the next one takes its place.
  */
 export default function FeedScreen() {
+  const m = useT();
   const location = useCurrentLocation();
   const coords = location.data?.coords ?? null;
   const feed = useFeed(coords, !location.isPending);
@@ -55,9 +57,9 @@ export default function FeedScreen() {
   } else if (items.length === 0) {
     content = (
       <EmptyState
-        title="Nothing to claim right now"
-        message="New items appear here as people near you give them away. Your own items and the ones you have claimed are under Activity."
-        action={<Button title="Donate an item" onPress={() => router.navigate('/donate')} />}
+        title={m.feed.emptyTitle}
+        message={m.feed.emptyMessage}
+        action={<Button title={m.feed.donateAnItem} onPress={() => router.navigate('/donate')} />}
       />
     );
   } else {
@@ -85,7 +87,7 @@ export default function FeedScreen() {
                 onClaim={() => setClaiming(item)}
                 onSkip={() =>
                   skip.mutate(item.id, {
-                    onSuccess: () => setNotice(`“${item.title}” is hidden. Show it again from Profile.`),
+                    onSuccess: () => setNotice(m.feed.hidden(item.title)),
                     onError: (error) => setNotice(errorMessage(error)),
                   })
                 }
@@ -100,27 +102,27 @@ export default function FeedScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <Text style={styles.brand}>Umeed</Text>
+        <Text style={styles.brand}>{m.feed.brand}</Text>
         <Pressable
           onPress={() => router.push('/explore')}
           accessibilityRole="button"
-          accessibilityLabel="Search items"
+          accessibilityLabel={m.feed.searchLabel}
           style={({ pressed }) => [styles.searchButton, pressed ? styles.searchPressed : null]}>
-          <Text style={styles.searchText}>🔍 Search</Text>
+          <Text style={styles.searchText}>{m.feed.search}</Text>
         </Pressable>
         {location.data?.permission === 'denied' ? (
           <Pressable onPress={() => location.refetch()} accessibilityRole="button">
-            <Text style={styles.locationHint}>Showing newest. Tap to use your location.</Text>
+            <Text style={styles.locationHint}>{m.feed.showingNewest}</Text>
           </Pressable>
         ) : coords ? (
-          <Text style={styles.locationHint}>Nearest first</Text>
+          <Text style={styles.locationHint}>{m.feed.nearestFirst}</Text>
         ) : null}
       </View>
       <View style={styles.switch}>
         <Segmented
           choices={[
-            { value: 'items', label: 'Items' },
-            { value: 'needs', label: 'Needs' },
+            { value: 'items', label: m.feed.items },
+            { value: 'needs', label: m.feed.needs },
           ]}
           value={view}
           onChange={setView}
@@ -140,7 +142,7 @@ export default function FeedScreen() {
           donorName={claiming.donorName}
           onClose={() => setClaiming(null)}
           onClaimed={() => {
-            setNotice(`Claimed “${claiming.title}”. Find it under Activity.`);
+            setNotice(m.feed.claimedNotice(claiming.title));
             setClaiming(null);
           }}
         />
@@ -158,6 +160,7 @@ type FeedPostProps = {
 };
 
 function FeedPost({ donation, height, near, onClaim, onSkip }: FeedPostProps) {
+  const m = useT();
   const [width, setWidth] = useState(0);
   const photoHeight = Math.round(height * 0.58);
   const place = `${donation.area}, ${donation.city}`;
@@ -173,24 +176,24 @@ function FeedPost({ donation, height, near, onClaim, onSkip }: FeedPostProps) {
           </Text>
         </Pressable>
         <View style={styles.metaRow}>
-          <Pill label={conditionLabels[donation.itemCondition]} tone="info" />
+          <Pill label={conditionLabel(donation.itemCondition)} tone="info" />
         </View>
         <Text style={styles.meta} numberOfLines={1}>
           {place}
           {distance}
         </Text>
-        <Text style={styles.meta}>Given by {donation.donorName}</Text>
+        <Text style={styles.meta}>{m.feed.givenBy(donation.donorName)}</Text>
         <Text style={styles.description} numberOfLines={3}>
           {donation.description}
         </Text>
         <View style={styles.spacer} />
-        <Button title="Claim" onPress={onClaim} />
+        <Button title={m.feed.claim} onPress={onClaim} />
         <View style={styles.bottomRow}>
-          <Text style={styles.swipeHint}>Swipe up for the next item</Text>
+          <Text style={styles.swipeHint}>{m.feed.swipeHint}</Text>
           <View style={styles.links}>
-            <LinkButton title="Not interested" color={colors.muted} onPress={onSkip} />
+            <LinkButton title={m.feed.notInterested} color={colors.muted} onPress={onSkip} />
             <LinkButton
-              title="Report"
+              title={m.common.report}
               color={colors.muted}
               onPress={() => router.push(`/donation/${donation.id}/report`)}
             />

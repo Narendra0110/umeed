@@ -1,6 +1,7 @@
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 
+import { t } from './i18n';
 import type { Photo } from './schemas';
 
 /** Longest side of an uploaded photo. Phone photos are much larger and would pass the 5 MB limit. */
@@ -13,7 +14,7 @@ export type PickResult = { photos: Photo[] } | { error: string };
 export async function pickFromGallery(limit: number): Promise<PickResult> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) {
-    return { error: 'Allow access to your photos to add pictures of the item.' };
+    return { error: t().donate.galleryDenied };
   }
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ['images'],
@@ -31,7 +32,7 @@ export async function pickFromGallery(limit: number): Promise<PickResult> {
 export async function takePhoto(): Promise<PickResult> {
   const permission = await ImagePicker.requestCameraPermissionsAsync();
   if (!permission.granted) {
-    return { error: 'Allow camera access to take a picture of the item.' };
+    return { error: t().donate.cameraDenied };
   }
   const result = await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 1 });
   if (result.canceled) {

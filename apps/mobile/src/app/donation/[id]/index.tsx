@@ -8,7 +8,8 @@ import { Body, Button, colors, EmptyState, ErrorState, LinkButton, Loading, Pill
 import { ApiError, errorMessage } from '@/lib/api';
 import { confirmBlock, useBlockUser } from '@/lib/blocks';
 import { useDonation, useRemoveDonation } from '@/lib/donations';
-import { conditionLabels, distanceKm, donationStatusLabels, formatDistance, timeAgo } from '@/lib/format';
+import { conditionLabel, distanceKm, donationStatusLabel, formatDistance, timeAgo } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import { useCurrentLocation } from '@/lib/location';
 import { usePickup } from '@/lib/pickup';
 import { useProfile } from '@/lib/profile';
@@ -18,6 +19,7 @@ import { useProfile } from '@/lib/profile';
  * details; everyone else can claim (while available) or report.
  */
 export default function DonationScreen() {
+  const m = useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const donation = useDonation(id);
   const profile = useProfile(true);
@@ -44,7 +46,7 @@ export default function DonationScreen() {
     if (donation.error instanceof ApiError && donation.error.status === 404) {
       return (
         <Screen>
-          <EmptyState title="This item is no longer listed" message="The donor may have removed it." />
+          <EmptyState title={m.item.goneTitle} message={m.item.goneMessage} />
         </Screen>
       );
     }
@@ -64,22 +66,18 @@ export default function DonationScreen() {
   const coords = location.data?.coords;
 
   const confirmRemove = () =>
-    Alert.alert(
-      'Remove this listing?',
-      'It will leave the feed and any waiting claims will be declined. This cannot be undone.',
-      [
-        { text: 'Keep listing', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () =>
-            remove.mutate(item.id, {
-              onSuccess: () => router.back(),
-              onError: (error) => Alert.alert('Could not remove', errorMessage(error)),
-            }),
-        },
-      ],
-    );
+    Alert.alert(m.item.removeTitle, m.item.removeMessage, [
+      { text: m.item.keepListing, style: 'cancel' },
+      {
+        text: m.item.remove,
+        style: 'destructive',
+        onPress: () =>
+          remove.mutate(item.id, {
+            onSuccess: () => router.back(),
+            onError: (error) => Alert.alert(m.item.couldNotRemove, errorMessage(error)),
+          }),
+      },
+    ]);
 
   return (
     <Screen scroll>
@@ -90,28 +88,26 @@ export default function DonationScreen() {
         {item.title}
       </Text>
       <View style={styles.row}>
-        <Pill label={conditionLabels[item.itemCondition]} tone="info" />
-        {item.status !== 'AVAILABLE' ? <Pill label={donationStatusLabels[item.status]} tone="warning" /> : null}
-        {isMine ? <Pill label="Your item" tone="warning" /> : null}
+        <Pill label={conditionLabel(item.itemCondition)} tone="info" />
+        {item.status !== 'AVAILABLE' ? <Pill label={donationStatusLabel(item.status)} tone="warning" /> : null}
+        {isMine ? <Pill label={m.item.yourItem} tone="warning" /> : null}
       </View>
       <Text style={styles.meta}>
         {item.area}, {item.city}
         {coords ? ` · ${formatDistance(distanceKm(coords, item))}` : ''}
       </Text>
-      <Text style={styles.meta}>
-        Given by {item.donorName} · {timeAgo(item.createdAt)}
-      </Text>
+      <Text style={styles.meta}>{m.item.givenByAgo(item.donorName, timeAgo(item.createdAt))}</Text>
       <Text style={styles.description}>{item.description}</Text>
 
       {isMine ? (
         <View style={styles.actions}>
           {item.status === 'AVAILABLE' ? (
             <>
-              <Button title="See claims" onPress={() => router.push(`/donation/${item.id}/claims`)} />
-              <Button title="Remove listing" variant="danger" onPress={confirmRemove} loading={remove.isPending} />
+              <Button title={m.item.seeClaims} onPress={() => router.push(`/donation/${item.id}/claims`)} />
+              <Button title={m.item.removeListing} variant="danger" onPress={confirmRemove} loading={remove.isPending} />
             </>
           ) : (
-            <Button title="Pickup details" onPress={() => router.push(`/donation/${item.id}/pickup`)} />
+            <Button title={m.common.pickupDetails} onPress={() => router.push(`/donation/${item.id}/pickup`)} />
           )}
         </View>
       ) : (
@@ -120,33 +116,33 @@ export default function DonationScreen() {
             <>
               <Body>
                 {item.status === 'COMPLETED'
-                  ? 'You received this item.'
-                  : 'This item is reserved for you. Call the donor to arrange the pickup.'}
+                  ? m.item.youReceived
+                  : m.item.reservedForYou}
               </Body>
-              <Button title="Pickup details" onPress={() => router.push(`/donation/${item.id}/pickup`)} />
+              <Button title={m.common.pickupDetails} onPress={() => router.push(`/donation/${item.id}/pickup`)} />
             </>
           ) : item.status !== 'AVAILABLE' ? (
             takenByOther && pickup.isPending ? null : (
               <Body>
                 {item.status === 'COMPLETED'
-                  ? 'This item has already been given away.'
-                  : 'This item has already been reserved for someone else.'}
+                  ? m.item.alreadyGiven
+                  : m.item.reservedForOther}
               </Body>
             )
           ) : claimed ? (
             <View style={styles.claimedBox}>
-              <Text style={styles.claimedText}>Claimed. You will find it under Activity.</Text>
+              <Text style={styles.claimedText}>{m.item.claimedBox}</Text>
             </View>
           ) : (
-            <Button title="Claim" onPress={() => setClaimOpen(true)} />
+            <Button title={m.feed.claim} onPress={() => setClaimOpen(true)} />
           )}
           <LinkButton
-            title="Report this listing"
+            title={m.item.reportListing}
             color={colors.muted}
             onPress={() => router.push(`/donation/${item.id}/report`)}
           />
           <LinkButton
-            title={`Block ${item.donorName}`}
+            title={m.common.block(item.donorName)}
             color={colors.muted}
             onPress={() =>
               confirmBlock(

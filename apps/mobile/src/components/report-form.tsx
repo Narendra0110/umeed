@@ -5,23 +5,20 @@ import { Alert } from 'react-native';
 
 import { Body, Button, ChoiceChips, ErrorBanner, Field, Screen, Title } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
-import { reportReasonLabels } from '@/lib/format';
+import { reportReasonLabel } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import { type ReportTarget, useCreateReport } from '@/lib/reports';
 import { reportSchema, type ReportFormValues } from '@/lib/schemas';
 import { REPORT_REASONS } from '@/lib/types';
 
-const reasonChoices = REPORT_REASONS.map((value) => ({ value, label: reportReasonLabels[value] }));
-
-const words = {
-  donation: { thing: 'listing', owner: 'donor' },
-  need: { thing: 'need', owner: 'person who asked' },
-} as const;
-
 /** Report a listing or a need. The owner is never told who reported it. */
 export function ReportForm({ target }: { target: ReportTarget }) {
   'use no memo';
+  const m = useT();
   const report = useCreateReport(target);
-  const { thing, owner } = words[target.kind];
+  const thing = target.kind === 'need' ? m.report.need : m.report.listing;
+  const owner = target.kind === 'need' ? m.report.asker : m.report.donor;
+  const reasonChoices = REPORT_REASONS.map((value) => ({ value, label: reportReasonLabel(value) }));
   const {
     control,
     handleSubmit,
@@ -38,7 +35,7 @@ export function ReportForm({ target }: { target: ReportTarget }) {
       { reason: chosen, details },
       {
         onSuccess: () => {
-          Alert.alert('Thank you', `We will review this ${thing}.`);
+          Alert.alert(m.report.thanksTitle, m.report.thanksMessage(thing));
           router.back();
         },
       },
@@ -50,14 +47,14 @@ export function ReportForm({ target }: { target: ReportTarget }) {
 
   return (
     <Screen scroll>
-      <Title>{`What is wrong with this ${thing}?`}</Title>
-      <Body>{`The ${owner} will not be told who reported it.`}</Body>
+      <Title>{m.report.title(thing)}</Title>
+      <Body>{m.report.ownerNotTold(owner)}</Body>
       <Controller
         control={control}
         name="reason"
         render={({ field: { onChange, value } }) => (
           <ChoiceChips
-            label="Reason"
+            label={m.report.reason}
             choices={reasonChoices}
             value={value}
             onChange={onChange}
@@ -70,8 +67,8 @@ export function ReportForm({ target }: { target: ReportTarget }) {
         name="details"
         render={({ field: { onChange, onBlur, value } }) => (
           <Field
-            label={reason === 'OTHER' ? 'Details' : 'Details (optional)'}
-            placeholder="Anything that helps us understand the problem"
+            label={reason === 'OTHER' ? m.report.details : m.report.detailsOptional}
+            placeholder={m.report.detailsPlaceholder}
             multiline
             maxLength={500}
             value={value}
@@ -82,7 +79,7 @@ export function ReportForm({ target }: { target: ReportTarget }) {
         )}
       />
       <ErrorBanner message={report.isError && serverErrors.length === 0 ? errorMessage(report.error) : null} />
-      <Button title="Send report" onPress={onSubmit} loading={report.isPending} />
+      <Button title={m.report.send} onPress={onSubmit} loading={report.isPending} />
     </Screen>
   );
 }

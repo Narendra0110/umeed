@@ -8,17 +8,12 @@ import { confirmBlock, useBlockUser } from '@/lib/blocks';
 import { useAcceptClaim, useDonationClaims } from '@/lib/claims';
 import { useDonation } from '@/lib/donations';
 import { timeAgo } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import type { Claim } from '@/lib/types';
-
-const statusLabel: Record<Claim['status'], string> = {
-  PENDING: 'Waiting',
-  ACCEPTED: 'Chosen',
-  REJECTED: 'Not chosen',
-  WITHDRAWN: 'Withdrawn',
-};
 
 /** Donor only: everyone who claimed the item. Choosing one reserves the item for them. */
 export default function DonationClaimsScreen() {
+  const m = useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const donation = useDonation(id);
   const claims = useDonationClaims(id);
@@ -46,16 +41,16 @@ export default function DonationClaimsScreen() {
 
   const confirmAccept = (claim: Claim) =>
     Alert.alert(
-      `Give it to ${claim.claimantName}?`,
-      'You will both see each other’s phone number, and they will see the pickup address. Everyone else who claimed it will be told it was given to someone else.',
+      m.claims.giveToTitle(claim.claimantName),
+      m.claims.giveToMessage,
       [
-        { text: 'Not yet', style: 'cancel' },
+        { text: m.common.notYet, style: 'cancel' },
         {
-          text: 'Choose',
+          text: m.claims.choose,
           onPress: () =>
             accept.mutate(claim.id, {
               onSuccess: () => router.replace(`/donation/${id}/pickup`),
-              onError: (error) => Alert.alert('Could not choose', errorMessage(error)),
+              onError: (error) => Alert.alert(m.claims.couldNotChoose, errorMessage(error)),
             }),
         },
       ],
@@ -81,27 +76,27 @@ export default function DonationClaimsScreen() {
           <Title>{donation.data.title}</Title>
           <Body>
             {available
-              ? 'Choose who gets this item. Only one person can be chosen.'
-              : 'This item is reserved. Open the pickup details to arrange the handover.'}
+              ? m.claims.chooseIntro
+              : m.claims.reservedIntro}
           </Body>
           {!available ? (
-            <Button title="Pickup details" onPress={() => router.push(`/donation/${id}/pickup`)} />
+            <Button title={m.common.pickupDetails} onPress={() => router.push(`/donation/${id}/pickup`)} />
           ) : null}
         </View>
       }
       ListEmptyComponent={
         <EmptyState
-          title="No claims yet"
-          message="People who claim this item from the feed will appear here. You can come back later."
+          title={m.claims.emptyTitle}
+          message={m.claims.emptyMessage}
         />
       }
       renderItem={({ item }) => (
         <ListRow
           title={item.claimantName}
-          subtitle={`${item.message ? `“${item.message}”` : 'No message'} · ${timeAgo(item.createdAt)}`}
+          subtitle={`${item.message ? `“${item.message}”` : m.claims.noMessage} · ${timeAgo(item.createdAt)}`}
           extra={
             <Pill
-              label={statusLabel[item.status]}
+              label={m.labels.claimStatusForDonor[item.status]}
               tone={item.status === 'ACCEPTED' ? 'success' : item.status === 'PENDING' ? 'info' : 'neutral'}
             />
           }
@@ -109,14 +104,14 @@ export default function DonationClaimsScreen() {
             <View style={styles.flex}>
               {available && item.status === 'PENDING' ? (
                 <Button
-                  title={`Give to ${item.claimantName}`}
+                  title={m.claims.giveTo(item.claimantName)}
                   loading={accept.isPending && accept.variables === item.id}
                   disabled={accept.isPending}
                   onPress={() => confirmAccept(item)}
                 />
               ) : null}
               <LinkButton
-                title={`Block ${item.claimantName}`}
+                title={m.common.block(item.claimantName)}
                 color={colors.muted}
                 onPress={() =>
                   confirmBlock(item.claimantName, (handlers) => block.mutate(item.claimantId, handlers))

@@ -34,4 +34,10 @@ class UserController {
     UserResponse updateMe(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody UpdateProfileRequest request) {
         return userService.updateDisplayName(jwt.getSubject(), request.displayName());
     }
+
+    /** The app's language for this account (F07). Body: {"language": "en" or "hi"} */
+    @PutMapping("/me/language")
+    UserResponse updateLanguage(@AuthenticationPrincipal Jwt jwt, @Valid @RequestBody UpdateLanguageRequest request) {
+        return userService.updateLanguage(jwt.getSubject(), request.language());
+    }
 }

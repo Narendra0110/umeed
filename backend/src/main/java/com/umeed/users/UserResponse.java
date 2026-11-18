@@ -8,7 +8,8 @@ public record UserResponse(
         String displayName,
         boolean profileComplete,
         String role,
-        String status) {
+        String status,
+        String language) {
 
     static UserResponse from(User user) {
         return new UserResponse(
@@ -17,6 +18,7 @@ public record UserResponse(
                 user.getDisplayName(),
                 user.getDisplayName() != null && !user.getDisplayName().isBlank(),
                 user.getRole().name(),
-                user.getStatus().name());
+                user.getStatus().name(),
+                user.getLanguage());
     }
 }

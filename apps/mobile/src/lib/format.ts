@@ -1,42 +1,25 @@
-import type { ClaimStatus, DonationStatus, ItemCondition, ReportReason } from './types';
+import { t } from './i18n';
+import type { Category, ClaimStatus, DonationStatus, ItemCondition, ReportReason } from './types';
 
-export const conditionLabels: Record<ItemCondition, string> = {
-  NEW: 'New',
-  LIKE_NEW: 'Like new',
-  GOOD: 'Good',
-  USABLE: 'Usable',
-};
+/** Labels in the current language. Components that show them use useT(), so they re-render on a switch. */
+export const conditionLabel = (condition: ItemCondition) => t().labels.condition[condition];
+export const donationStatusLabel = (status: DonationStatus) => t().labels.donationStatus[status];
+export const claimStatusLabel = (status: ClaimStatus) => t().labels.claimStatus[status];
+export const reportReasonLabel = (reason: ReportReason) => t().labels.reportReason[reason];
 
-export const donationStatusLabels: Record<DonationStatus, string> = {
-  AVAILABLE: 'Available',
-  RESERVED: 'Reserved',
-  COMPLETED: 'Given away',
-  REMOVED: 'Removed',
-};
-
-export const claimStatusLabels: Record<ClaimStatus, string> = {
-  PENDING: 'Waiting for the donor',
-  ACCEPTED: 'Accepted',
-  REJECTED: 'Not chosen',
-  WITHDRAWN: 'Withdrawn',
-};
-
-export const reportReasonLabels: Record<ReportReason, string> = {
-  SELLING_OR_ASKING_MONEY: 'Selling or asking for money',
-  PROHIBITED_ITEM: 'Item not allowed',
-  FAKE_OR_MISLEADING: 'Fake or misleading',
-  OFFENSIVE: 'Offensive',
-  OTHER: 'Something else',
-};
+/** Category names come from the server in English; known ones are shown in the current language. */
+export const categoryLabel = (category: Pick<Category, 'slug' | 'name'>) =>
+  t().labels.category[category.slug] ?? category.name;
 
 export type Section<T> = { key: string; title: string; data: T[] };
 
 /** Sections for "My donations": items people can still claim, reserved items, then given away. */
 export function groupMyDonations<T extends { status: DonationStatus }>(items: T[]): Section<T>[] {
+  const s = t().sections;
   return nonEmpty([
-    { key: 'available', title: 'Available', data: items.filter((d) => d.status === 'AVAILABLE') },
-    { key: 'reserved', title: 'Reserved – arrange pickup', data: items.filter((d) => d.status === 'RESERVED') },
-    { key: 'completed', title: 'Given away', data: items.filter((d) => d.status === 'COMPLETED') },
+    { key: 'available', title: s.available, data: items.filter((d) => d.status === 'AVAILABLE') },
+    { key: 'reserved', title: s.reserved, data: items.filter((d) => d.status === 'RESERVED') },
+    { key: 'completed', title: s.givenAway, data: items.filter((d) => d.status === 'COMPLETED') },
   ]);
 }
 
@@ -48,18 +31,15 @@ export function groupMyDonations<T extends { status: DonationStatus }>(items: T[
 export function groupMyClaims<T extends { status: ClaimStatus; donationStatus: DonationStatus | null }>(
   items: T[],
 ): Section<T>[] {
+  const s = t().sections;
   const received = (c: T) => c.status === 'ACCEPTED' && c.donationStatus === 'COMPLETED';
   return nonEmpty([
-    {
-      key: 'accepted',
-      title: 'Accepted – arrange pickup',
-      data: items.filter((c) => c.status === 'ACCEPTED' && !received(c)),
-    },
-    { key: 'pending', title: 'Waiting for the donor', data: items.filter((c) => c.status === 'PENDING') },
-    { key: 'received', title: 'Received', data: items.filter(received) },
+    { key: 'accepted', title: s.accepted, data: items.filter((c) => c.status === 'ACCEPTED' && !received(c)) },
+    { key: 'pending', title: s.waiting, data: items.filter((c) => c.status === 'PENDING') },
+    { key: 'received', title: s.received, data: items.filter(received) },
     {
       key: 'closed',
-      title: 'Closed',
+      title: s.closed,
       data: items.filter((c) => c.status === 'REJECTED' || c.status === 'WITHDRAWN'),
     },
   ]);
@@ -88,29 +68,28 @@ export function distanceKm(from: Coordinates, to: Coordinates): number {
  * so anything closer than that is shown as "Within 1 km".
  */
 export function formatDistance(km: number): string {
-  if (km < 1) {
-    return 'Within 1 km';
-  }
-  return `About ${Math.round(km)} km away`;
+  const time = t().time;
+  return km < 1 ? time.withinOneKm : time.kmAway(Math.round(km));
 }
 
 /** "Just now", "5 min ago", "3 h ago", "2 days ago", or a date for anything older than a week. */
 export function timeAgo(isoDate: string, now: Date = new Date()): string {
+  const time = t().time;
   const seconds = Math.max(0, (now.getTime() - new Date(isoDate).getTime()) / 1000);
   if (seconds < 60) {
-    return 'Just now';
+    return time.justNow;
   }
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) {
-    return `${minutes} min ago`;
+    return time.minutesAgo(minutes);
   }
   const hours = Math.floor(minutes / 60);
   if (hours < 24) {
-    return `${hours} h ago`;
+    return time.hoursAgo(hours);
   }
   const days = Math.floor(hours / 24);
   if (days < 7) {
-    return days === 1 ? '1 day ago' : `${days} days ago`;
+    return time.daysAgo(days);
   }
-  return new Date(isoDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(isoDate).toLocaleDateString(time.dateLocale, { day: 'numeric', month: 'short', year: 'numeric' });
 }

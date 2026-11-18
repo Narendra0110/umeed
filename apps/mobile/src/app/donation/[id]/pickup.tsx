@@ -4,6 +4,7 @@ import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 import { Body, Button, colors, EmptyState, ErrorState, Loading, Pill, Screen, Title } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
 import { pickupRole, useCancelPickup, useConfirmPickup, usePickup } from '@/lib/pickup';
+import { useT } from '@/lib/i18n';
 import { useProfile } from '@/lib/profile';
 import type { PickupParty } from '@/lib/types';
 
@@ -12,6 +13,7 @@ import type { PickupParty } from '@/lib/types';
  * number, and the handover confirmations. Both confirmations complete the donation.
  */
 export default function PickupScreen() {
+  const m = useT();
   const { id } = useLocalSearchParams<{ id: string }>();
   const pickup = usePickup(id);
   const profile = useProfile(true);
@@ -27,8 +29,8 @@ export default function PickupScreen() {
       return (
         <Screen>
           <EmptyState
-            title="No pickup details"
-            message="Pickup details are shown only to the donor and the chosen receiver while the item is reserved or given away."
+            title={m.pickup.noDetailsTitle}
+            message={m.pickup.noDetailsMessage}
           />
         </Screen>
       );
@@ -45,37 +47,37 @@ export default function PickupScreen() {
   const completed = details.status === 'COMPLETED';
   const iConfirmed = role === 'donor' ? details.donorConfirmed : details.receiverConfirmed;
   const other = role === 'donor' ? details.receiver : details.donor;
-  const otherLabel = role === 'donor' ? 'Receiver' : 'Donor';
+  const otherLabel = role === 'donor' ? m.pickup.receiver : m.pickup.donor;
 
   const confirmHandover = () =>
     Alert.alert(
-      role === 'donor' ? 'Have you handed it over?' : 'Have you received it?',
-      'Confirm only after the item has changed hands. When you both confirm, the donation is complete.',
+      role === 'donor' ? m.pickup.handedOverQuestion : m.pickup.receivedQuestion,
+      m.pickup.confirmMessage,
       [
-        { text: 'Not yet', style: 'cancel' },
+        { text: m.common.notYet, style: 'cancel' },
         {
-          text: 'Confirm',
+          text: m.pickup.confirm,
           onPress: () =>
-            confirm.mutate(undefined, { onError: (error) => Alert.alert('Could not confirm', errorMessage(error)) }),
+            confirm.mutate(undefined, { onError: (error) => Alert.alert(m.pickup.couldNotConfirm, errorMessage(error)) }),
         },
       ],
     );
 
   const cancelReservation = () =>
     Alert.alert(
-      'Cancel this reservation?',
+      m.pickup.cancelTitle,
       role === 'donor'
-        ? `The item goes back to the feed and ${details.receiver.name} will not be able to claim it again. The other people who claimed it can be chosen again.`
-        : 'The item goes back to the donor and you will not be able to claim it again.',
+        ? m.pickup.cancelDonor(details.receiver.name)
+        : m.pickup.cancelReceiver,
       [
-        { text: 'Keep reservation', style: 'cancel' },
+        { text: m.pickup.keepReservation, style: 'cancel' },
         {
-          text: 'Cancel reservation',
+          text: m.pickup.cancelReservation,
           style: 'destructive',
           onPress: () =>
             cancel.mutate(undefined, {
               onSuccess: () => router.back(),
-              onError: (error) => Alert.alert('Could not cancel', errorMessage(error)),
+              onError: (error) => Alert.alert(m.pickup.couldNotCancel, errorMessage(error)),
             }),
         },
       ],
@@ -85,13 +87,13 @@ export default function PickupScreen() {
     <Screen scroll>
       <Title>{details.donationTitle}</Title>
       {completed ? (
-        <Pill label="Given away – thank you!" tone="success" />
+        <Pill label={m.pickup.givenAway} tone="success" />
       ) : (
-        <Pill label="Reserved – arrange the pickup by message or phone" tone="warning" />
+        <Pill label={m.pickup.reserved} tone="warning" />
       )}
 
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>Pickup address</Text>
+        <Text style={styles.cardLabel}>{m.pickup.address}</Text>
         <Text style={styles.address} selectable>
           {details.pickupAddress}
         </Text>
@@ -102,44 +104,45 @@ export default function PickupScreen() {
           <PartyCard label={otherLabel} party={other} />
           {details.claimId ? (
             <Button
-              title={completed ? `See messages with ${other.name}` : `Message ${other.name}`}
+              title={completed ? m.pickup.seeMessages(other.name) : m.pickup.message(other.name)}
               onPress={() => router.push(`/chat/${details.claimId}`)}
             />
           ) : null}
         </>
       ) : (
         <>
-          <PartyCard label="Donor" party={details.donor} />
-          <PartyCard label="Receiver" party={details.receiver} />
+          <PartyCard label={m.pickup.donor} party={details.donor} />
+          <PartyCard label={m.pickup.receiver} party={details.receiver} />
         </>
       )}
 
       <View style={styles.card}>
-        <Text style={styles.cardLabel}>Handover</Text>
-        <ConfirmLine label={`Donor (${details.donor.name})`} confirmed={details.donorConfirmed} />
-        <ConfirmLine label={`Receiver (${details.receiver.name})`} confirmed={details.receiverConfirmed} />
+        <Text style={styles.cardLabel}>{m.pickup.handover}</Text>
+        <ConfirmLine label={m.pickup.donorLine(details.donor.name)} confirmed={details.donorConfirmed} />
+        <ConfirmLine label={m.pickup.receiverLine(details.receiver.name)} confirmed={details.receiverConfirmed} />
       </View>
 
       {!completed && role ? (
         <View style={styles.actions}>
           {iConfirmed ? (
-            <Body>You have confirmed. Waiting for {other.name} to confirm too.</Body>
+            <Body>{m.pickup.waitingFor(other.name)}</Body>
           ) : (
             <Button
-              title={role === 'donor' ? 'I have handed it over' : 'I have received it'}
+              title={role === 'donor' ? m.pickup.handedOver : m.pickup.receivedIt}
               onPress={confirmHandover}
               loading={confirm.isPending}
             />
           )}
-          <Button title="Cancel reservation" variant="danger" onPress={cancelReservation} loading={cancel.isPending} />
+          <Button title={m.pickup.cancelReservation} variant="danger" onPress={cancelReservation} loading={cancel.isPending} />
         </View>
       ) : null}
-      <Body>Meet in a safe, public place if you can. Umeed items are always free.</Body>
+      <Body>{m.pickup.safety}</Body>
     </Screen>
   );
 }
 
 function PartyCard({ label, party }: { label: string; party: PickupParty }) {
+  const m = useT();
   return (
     <View style={styles.card}>
       <Text style={styles.cardLabel}>{label}</Text>
@@ -148,11 +151,11 @@ function PartyCard({ label, party }: { label: string; party: PickupParty }) {
         {party.phoneNumber}
       </Text>
       <Button
-        title={`Call ${party.name}`}
+        title={m.pickup.call(party.name)}
         variant="secondary"
         onPress={() =>
           Linking.openURL(`tel:${party.phoneNumber}`).catch(() =>
-            Alert.alert('Could not start a call', `Please dial ${party.phoneNumber}.`),
+            Alert.alert(m.pickup.couldNotCall, m.pickup.pleaseDial(party.phoneNumber)),
           )
         }
       />
@@ -161,10 +164,11 @@ function PartyCard({ label, party }: { label: string; party: PickupParty }) {
 }
 
 function ConfirmLine({ label, confirmed }: { label: string; confirmed: boolean }) {
+  const m = useT();
   return (
     <View style={styles.confirmLine}>
       <Text style={styles.confirmLabel}>{label}</Text>
-      <Pill label={confirmed ? 'Confirmed' : 'Not yet'} tone={confirmed ? 'success' : 'neutral'} />
+      <Pill label={confirmed ? m.pickup.confirmed : m.common.notYet} tone={confirmed ? 'success' : 'neutral'} />
     </View>
   );
 }

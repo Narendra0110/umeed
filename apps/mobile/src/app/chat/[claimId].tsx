@@ -17,12 +17,14 @@ import { colors, EmptyState, ErrorState, Loading, Screen } from '@/components/ui
 import { ApiError, errorMessage } from '@/lib/api';
 import { useChatThread, useMarkChatRead, useSendMessage } from '@/lib/chat';
 import { timeAgo } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import type { ChatMessage } from '@/lib/types';
 
 const MAX_LENGTH = 1000;
 
 /** The conversation between a donor and the chosen receiver. Read-only once the pickup is over. */
 export default function ChatScreen() {
+  const m = useT();
   const { claimId } = useLocalSearchParams<{ claimId: string }>();
   const thread = useChatThread(claimId);
   const send = useSendMessage(claimId);
@@ -50,7 +52,7 @@ export default function ChatScreen() {
     return (
       <Screen>
         {status === 403 || status === 404 ? (
-          <EmptyState title="Chat not available" message="Only the donor and the chosen receiver can see this chat." />
+          <EmptyState title={m.chat.notAvailableTitle} message={m.chat.notAvailableMessage} />
         ) : (
           <ErrorState message={errorMessage(thread.error)} onRetry={() => thread.refetch()} retrying={thread.isFetching} />
         )}
@@ -67,7 +69,7 @@ export default function ChatScreen() {
     }
     send.mutate(trimmed, {
       onSuccess: () => setText(''),
-      onError: (error) => Alert.alert('Message not sent', errorMessage(error)),
+      onError: (error) => Alert.alert(m.chat.notSent, errorMessage(error)),
     });
   };
 
@@ -86,8 +88,8 @@ export default function ChatScreen() {
           <View style={styles.empty}>
             <Text style={styles.emptyText}>
               {chat.open
-                ? `Say hello to ${chat.otherPartyName} and agree on a time and place for the pickup.`
-                : 'No messages.'}
+                ? m.chat.helloTo(chat.otherPartyName)
+                : m.chat.noMessages}
             </Text>
           </View>
         }
@@ -99,28 +101,28 @@ export default function ChatScreen() {
             style={styles.input}
             value={text}
             onChangeText={setText}
-            placeholder="Write a message"
+            placeholder={m.chat.placeholder}
             placeholderTextColor={colors.muted}
             multiline
             maxLength={MAX_LENGTH}
-            accessibilityLabel="Message"
+            accessibilityLabel={m.chat.messageLabel}
           />
           <Pressable
             onPress={onSend}
             disabled={!trimmed || send.isPending}
             accessibilityRole="button"
-            accessibilityLabel="Send"
+            accessibilityLabel={m.chat.send}
             style={({ pressed }) => [
               styles.send,
               !trimmed || send.isPending ? styles.sendDisabled : null,
               pressed ? styles.sendPressed : null,
             ]}>
-            <Text style={styles.sendText}>{send.isPending ? '…' : 'Send'}</Text>
+            <Text style={styles.sendText}>{send.isPending ? '…' : m.chat.send}</Text>
           </Pressable>
         </View>
       ) : (
         <View style={[styles.closed, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <Text style={styles.closedText}>This chat is closed because the pickup is finished or cancelled.</Text>
+          <Text style={styles.closedText}>{m.chat.closed}</Text>
         </View>
       )}
     </KeyboardAvoidingView>

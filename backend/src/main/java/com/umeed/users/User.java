@@ -43,6 +43,10 @@ public class User {
     @Column(nullable = false, length = 20)
     private Status status = Status.ACTIVE;
 
+    /** "en" or "hi" (F07). */
+    @Column(nullable = false, length = 5)
+    private String language = "en";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -79,6 +83,10 @@ public class User {
         this.deletedAt = Instant.now();
     }
 
+    void changeLanguage(String language) {
+        this.language = language;
+    }
+
     void suspend() {
         this.status = Status.SUSPENDED;
     }
@@ -105,6 +113,7 @@ public class User {
     public String getDisplayName() { return displayName; }
     public Role getRole() { return role; }
     public Status getStatus() { return status; }
+    public String getLanguage() { return language; }
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
     public Instant getDeletedAt() { return deletedAt; }

@@ -8,7 +8,8 @@ import { Button, ChoiceChips, colors, EmptyState, ErrorState, Field, Loading, Se
 import { errorMessage } from '@/lib/api';
 import { useCategories } from '@/lib/donations';
 import { DISTANCE_CHOICES, emptyFilters, type SearchFilters, spreadPins, useSearch } from '@/lib/explore';
-import { conditionLabels, distanceKm, formatDistance } from '@/lib/format';
+import { categoryLabel, conditionLabel, distanceKm, formatDistance } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import { useCurrentLocation } from '@/lib/location';
 import type { Donation } from '@/lib/types';
 
@@ -22,6 +23,7 @@ const INDIA = { latitude: 22.5, longitude: 79.0, latitudeDelta: 22, longitudeDel
  * Home (never your own, claimed or blocked ones), but also items marked "Not interested".
  */
 export default function ExploreScreen() {
+  const m = useT();
   const location = useCurrentLocation();
   const coords = location.data?.coords ?? null;
   const categories = useCategories();
@@ -43,12 +45,12 @@ export default function ExploreScreen() {
   const items = search.data?.pages.flatMap((page) => page.items) ?? [];
 
   const categoryChoices = [
-    { value: 'all', label: 'All' },
-    ...(categories.data ?? []).map((category) => ({ value: category.id, label: category.name })),
+    { value: 'all', label: m.explore.all },
+    ...(categories.data ?? []).map((category) => ({ value: category.id, label: categoryLabel(category) })),
   ];
   const distanceChoices = [
-    { value: 'any', label: 'Any distance' },
-    ...DISTANCE_CHOICES.map((km) => ({ value: String(km), label: `${km} km` })),
+    { value: 'any', label: m.explore.anyDistance },
+    ...DISTANCE_CHOICES.map((km) => ({ value: String(km), label: m.explore.km(km) })),
   ];
   const activeFilters = [filters.categoryId, filters.city.trim(), filters.maxKm].filter(Boolean).length;
 
@@ -73,11 +75,11 @@ export default function ExploreScreen() {
         ListFooterComponent={search.isFetchingNextPage ? <ActivityIndicator color={colors.primary} /> : undefined}
         ListEmptyComponent={
           <EmptyState
-            title="Nothing found"
-            message="Try other words, another category or a larger distance."
+            title={m.explore.nothingFound}
+            message={m.explore.nothingFoundHint}
             action={
               <Button
-                title="Clear search"
+                title={m.explore.clear}
                 variant="secondary"
                 onPress={() => {
                   setDraft({ text: '', city: '' });
@@ -90,7 +92,7 @@ export default function ExploreScreen() {
         renderItem={({ item }) => (
           <ListRow
             title={item.title}
-            subtitle={`${conditionLabels[item.itemCondition]} · ${item.area}, ${item.city}${
+            subtitle={`${conditionLabel(item.itemCondition)} · ${item.area}, ${item.city}${
               coords ? ` · ${formatDistance(distanceKm(coords, item))}` : ''
             }`}
             imagePath={item.imageUrls[0]}
@@ -105,8 +107,8 @@ export default function ExploreScreen() {
     <View style={styles.screen}>
       <View style={styles.controls}>
         <Field
-          label="Search"
-          placeholder="For example, school bag"
+          label={m.explore.searchLabel}
+          placeholder={m.explore.placeholder}
           returnKeyType="search"
           maxLength={100}
           value={draft.text}
@@ -117,15 +119,15 @@ export default function ExploreScreen() {
           <View style={styles.flex}>
             <Segmented
               choices={[
-                { value: 'list', label: 'List' },
-                { value: 'map', label: 'Map' },
+                { value: 'list', label: m.explore.list },
+                { value: 'map', label: m.explore.map },
               ]}
               value={view}
               onChange={setView}
             />
           </View>
           <Button
-            title={showFilters ? 'Hide filters' : activeFilters ? `Filters (${activeFilters})` : 'Filters'}
+            title={showFilters ? m.explore.hideFilters : activeFilters ? m.explore.filtersCount(activeFilters) : m.explore.filters}
             variant="secondary"
             onPress={() => setShowFilters((shown) => !shown)}
           />
@@ -133,14 +135,14 @@ export default function ExploreScreen() {
         {showFilters ? (
           <View style={styles.filters}>
             <ChoiceChips
-              label="Category"
+              label={m.common.category}
               choices={categoryChoices}
               value={filters.categoryId ?? 'all'}
               onChange={(value) => setFilters((current) => ({ ...current, categoryId: value === 'all' ? null : value }))}
             />
             {coords ? (
               <ChoiceChips
-                label="Distance"
+                label={m.explore.distance}
                 choices={distanceChoices}
                 value={filters.maxKm ? String(filters.maxKm) : 'any'}
                 onChange={(value) =>
@@ -148,11 +150,11 @@ export default function ExploreScreen() {
                 }
               />
             ) : (
-              <Text style={styles.hint}>Allow location on Home to filter by distance.</Text>
+              <Text style={styles.hint}>{m.explore.allowLocationHint}</Text>
             )}
             <Field
-              label="City"
-              placeholder="For example, Pune"
+              label={m.common.city}
+              placeholder={m.common.cityPlaceholder}
               autoCapitalize="words"
               maxLength={100}
               value={draft.city}
@@ -168,6 +170,7 @@ export default function ExploreScreen() {
 
 /** Results on a map. Pins sit at the approximate location (about 1 km), never at an address. */
 function ResultsMap({ items, near }: { items: Donation[]; near: { latitude: number; longitude: number } | null }) {
+  const m = useT();
   const first = items[0];
   const centre = near ?? (first ? { latitude: first.latitude, longitude: first.longitude } : null);
   const region = centre ? { ...centre, latitudeDelta: 0.25, longitudeDelta: 0.25 } : INDIA;
@@ -185,7 +188,7 @@ function ResultsMap({ items, near }: { items: Donation[]; near: { latitude: numb
             key={pin.donation.id}
             coordinate={{ latitude: pin.latitude, longitude: pin.longitude }}
             title={pin.donation.title}
-            description={`${pin.donation.area} · tap to open`}
+            description={m.explore.tapToOpen(pin.donation.area)}
             pinColor={colors.primary}
             onCalloutPress={() => router.push(`/donation/${pin.donation.id}`)}
           />
@@ -193,7 +196,7 @@ function ResultsMap({ items, near }: { items: Donation[]; near: { latitude: numb
       </MapView>
       {items.length === 0 ? (
         <View style={styles.mapNotice} pointerEvents="none">
-          <Text style={styles.mapNoticeText}>Nothing found here. Try other words or filters.</Text>
+          <Text style={styles.mapNoticeText}>{m.explore.mapEmpty}</Text>
         </View>
       ) : null}
     </View>

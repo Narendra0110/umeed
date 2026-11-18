@@ -8,25 +8,27 @@ import { Button, colors, EmptyState, ErrorState, Loading, Pill, Segmented, Title
 import { errorMessage } from '@/lib/api';
 import { useMyClaims, useWithdrawClaim } from '@/lib/claims';
 import { useMyDonations } from '@/lib/donations';
-import { claimStatusLabels, donationStatusLabels, groupMyClaims, groupMyDonations, timeAgo } from '@/lib/format';
-import { needStatusLabels, offerStatusLabels, useMyNeeds, useMyOffers, useWithdrawOffer } from '@/lib/needs';
+import { claimStatusLabel, donationStatusLabel, groupMyClaims, groupMyDonations, timeAgo } from '@/lib/format';
+import { useT } from '@/lib/i18n';
+import { needStatusLabel, offerStatusLabel, useMyNeeds, useMyOffers, useWithdrawOffer } from '@/lib/needs';
 import type { Claim, ClaimStatus, Donation, DonationStatus, Need, Offer } from '@/lib/types';
 
 type Tab = 'donations' | 'claims' | 'needs';
 
 /** Activity: the items I gave, the items I claimed, and my needs and offers, grouped by what needs doing next. */
 export default function ActivityScreen() {
+  const m = useT();
   const [tab, setTab] = useState<Tab>('donations');
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <Title>Activity</Title>
+        <Title>{m.activity.title}</Title>
         <Segmented
           choices={[
-            { value: 'donations', label: 'My donations' },
-            { value: 'claims', label: 'My claims' },
-            { value: 'needs', label: 'Needs' },
+            { value: 'donations', label: m.activity.myDonations },
+            { value: 'claims', label: m.activity.myClaims },
+            { value: 'needs', label: m.activity.needs },
           ]}
           value={tab}
           onChange={setTab}
@@ -45,6 +47,7 @@ const donationTone: Record<DonationStatus, 'success' | 'warning' | 'neutral'> = 
 };
 
 function MyDonations() {
+  const m = useT();
   const donations = useMyDonations();
 
   if (donations.isPending) {
@@ -63,9 +66,9 @@ function MyDonations() {
   if (items.length === 0) {
     return (
       <EmptyState
-        title="You have not given anything yet"
-        message="Items you post appear here, with the claims people send you."
-        action={<Button title="Give an item" onPress={() => router.navigate('/donate')} />}
+        title={m.activity.noDonationsTitle}
+        message={m.activity.noDonationsMessage}
+        action={<Button title={m.common.giveAnItem} onPress={() => router.navigate('/donate')} />}
       />
     );
   }
@@ -89,7 +92,7 @@ function MyDonations() {
           title={item.title}
           subtitle={`${item.area}, ${item.city} · ${timeAgo(item.createdAt)}`}
           imagePath={item.imageUrls[0]}
-          extra={<Pill label={donationStatusLabels[item.status]} tone={donationTone[item.status]} />}
+          extra={<Pill label={donationStatusLabel(item.status)} tone={donationTone[item.status]} />}
           onPress={() => open(item)}
         />
       )}
@@ -105,6 +108,7 @@ const claimTone: Record<ClaimStatus, 'success' | 'info' | 'neutral'> = {
 };
 
 function MyClaims() {
+  const m = useT();
   const claims = useMyClaims();
   const withdraw = useWithdrawClaim();
 
@@ -120,29 +124,25 @@ function MyClaims() {
   if (items.length === 0) {
     return (
       <EmptyState
-        title="No claims yet"
-        message="When you claim an item from the feed, you can follow it here."
-        action={<Button title="Browse items" onPress={() => router.navigate('/feed')} />}
+        title={m.activity.noClaimsTitle}
+        message={m.activity.noClaimsMessage}
+        action={<Button title={m.activity.browse} onPress={() => router.navigate('/feed')} />}
       />
     );
   }
 
   const confirmWithdraw = (claim: Claim) =>
-    Alert.alert(
-      'Withdraw your claim?',
-      `You will not be able to claim “${claim.donationTitle}” again.`,
-      [
-        { text: 'Keep claim', style: 'cancel' },
-        {
-          text: 'Withdraw',
-          style: 'destructive',
-          onPress: () =>
-            withdraw.mutate(claim.id, {
-              onError: (error) => Alert.alert('Could not withdraw', errorMessage(error)),
-            }),
-        },
-      ],
-    );
+    Alert.alert(m.activity.withdrawClaimTitle, m.activity.withdrawClaimMessage(claim.donationTitle), [
+      { text: m.activity.keepClaim, style: 'cancel' },
+      {
+        text: m.common.withdraw,
+        style: 'destructive',
+        onPress: () =>
+          withdraw.mutate(claim.id, {
+            onError: (error) => Alert.alert(m.common.couldNotWithdraw, errorMessage(error)),
+          }),
+      },
+    ]);
 
   return (
     <SectionList
@@ -160,12 +160,12 @@ function MyClaims() {
         return (
         <ListRow
           title={item.donationTitle}
-          subtitle={item.message ? `Your message: ${item.message}` : `Claimed ${timeAgo(item.createdAt)}`}
+          subtitle={item.message ? m.activity.yourMessage(item.message) : m.activity.claimedAgo(timeAgo(item.createdAt))}
           extra={
             received ? (
-              <Pill label="Received" tone="success" />
+              <Pill label={m.activity.received} tone="success" />
             ) : (
-              <Pill label={claimStatusLabels[item.status]} tone={claimTone[item.status]} />
+              <Pill label={claimStatusLabel(item.status)} tone={claimTone[item.status]} />
             )
           }
           onPress={
@@ -179,7 +179,7 @@ function MyClaims() {
             received ? undefined : item.status === 'PENDING' ? (
               <View style={styles.flex}>
                 <Button
-                  title="Withdraw claim"
+                  title={m.activity.withdrawClaim}
                   variant="secondary"
                   loading={withdraw.isPending && withdraw.variables === item.id}
                   onPress={() => confirmWithdraw(item)}
@@ -187,7 +187,7 @@ function MyClaims() {
               </View>
             ) : item.status === 'ACCEPTED' ? (
               <View style={styles.flex}>
-                <Button title="Pickup details" onPress={() => router.push(`/donation/${item.donationId}/pickup`)} />
+                <Button title={m.common.pickupDetails} onPress={() => router.push(`/donation/${item.donationId}/pickup`)} />
               </View>
             ) : undefined
           }
@@ -202,6 +202,7 @@ type NeedsRow = { kind: 'need'; need: Need } | { kind: 'offer'; offer: Offer };
 
 /** What I asked for (my needs) and what I offered for other people's needs. */
 function MyNeedsAndOffers() {
+  const m = useT();
   const needs = useMyNeeds();
   const offers = useMyOffers();
   const withdraw = useWithdrawOffer();
@@ -226,29 +227,29 @@ function MyNeedsAndOffers() {
   if (myNeeds.length === 0 && myOffers.length === 0) {
     return (
       <EmptyState
-        title="No needs or offers yet"
-        message="Ask for something you need, or offer one of your items for what someone nearby needs."
-        action={<Button title="Ask for something" onPress={() => router.navigate('/donate')} />}
+        title={m.activity.noNeedsTitle}
+        message={m.activity.noNeedsMessage}
+        action={<Button title={m.common.askForSomething} onPress={() => router.navigate('/donate')} />}
       />
     );
   }
 
   const sections: { title: string; data: NeedsRow[] }[] = [];
   if (myNeeds.length > 0) {
-    sections.push({ title: 'What I asked for', data: myNeeds.map((need) => ({ kind: 'need', need })) });
+    sections.push({ title: m.activity.askedFor, data: myNeeds.map((need) => ({ kind: 'need', need })) });
   }
   if (myOffers.length > 0) {
-    sections.push({ title: 'What I offered', data: myOffers.map((offer) => ({ kind: 'offer', offer })) });
+    sections.push({ title: m.activity.offered, data: myOffers.map((offer) => ({ kind: 'offer', offer })) });
   }
 
   const confirmWithdraw = (offer: Offer) =>
-    Alert.alert('Withdraw your offer?', `“${offer.donationTitle}” will no longer be offered for “${offer.needTitle}”.`, [
-      { text: 'Keep offer', style: 'cancel' },
+    Alert.alert(m.activity.withdrawOfferTitle, m.activity.withdrawOfferMessage(offer.donationTitle, offer.needTitle), [
+      { text: m.activity.keepOffer, style: 'cancel' },
       {
-        text: 'Withdraw',
+        text: m.common.withdraw,
         style: 'destructive',
         onPress: () =>
-          withdraw.mutate(offer.id, { onError: (error) => Alert.alert('Could not withdraw', errorMessage(error)) }),
+          withdraw.mutate(offer.id, { onError: (error) => Alert.alert(m.common.couldNotWithdraw, errorMessage(error)) }),
       },
     ]);
 
@@ -277,8 +278,8 @@ function MyNeedsAndOffers() {
               <Pill
                 label={
                   row.need.status === 'OPEN' && row.need.pendingOfferCount
-                    ? `${row.need.pendingOfferCount} offer${row.need.pendingOfferCount === 1 ? '' : 's'} waiting`
-                    : needStatusLabels[row.need.status]
+                    ? m.activity.offersWaiting(row.need.pendingOfferCount)
+                    : needStatusLabel(row.need.status)
                 }
                 tone={row.need.status === 'OPEN' ? (row.need.pendingOfferCount ? 'info' : 'success') : 'neutral'}
               />
@@ -287,12 +288,12 @@ function MyNeedsAndOffers() {
           />
         ) : (
           <ListRow
-            title={`${row.offer.donationTitle} for “${row.offer.needTitle}”`}
+            title={m.activity.offerFor(row.offer.donationTitle, row.offer.needTitle)}
             subtitle={timeAgo(row.offer.createdAt)}
             imagePath={row.offer.donationImageUrl ?? undefined}
             extra={
               <Pill
-                label={offerStatusLabels[row.offer.status]}
+                label={offerStatusLabel(row.offer.status)}
                 tone={row.offer.status === 'ACCEPTED' ? 'success' : row.offer.status === 'PENDING' ? 'info' : 'neutral'}
               />
             }
@@ -301,7 +302,7 @@ function MyNeedsAndOffers() {
               row.offer.status === 'PENDING' ? (
                 <View style={styles.flex}>
                   <Button
-                    title="Withdraw offer"
+                    title={m.activity.withdrawOffer}
                     variant="secondary"
                     loading={withdraw.isPending && withdraw.variables === row.offer.id}
                     onPress={() => confirmWithdraw(row.offer)}
@@ -310,7 +311,7 @@ function MyNeedsAndOffers() {
               ) : row.offer.status === 'ACCEPTED' ? (
                 <View style={styles.flex}>
                   <Button
-                    title="Pickup details"
+                    title={m.common.pickupDetails}
                     onPress={() => router.push(`/donation/${row.offer.donationId}/pickup`)}
                   />
                 </View>

@@ -5,10 +5,12 @@ import { ListRow } from '@/components/list-row';
 import { Button, colors, EmptyState, ErrorState, Loading } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { type Coordinates, distanceKm, formatDistance, timeAgo } from '@/lib/format';
+import { useT } from '@/lib/i18n';
 import { useNeedsFeed } from '@/lib/needs';
 
 /** Home, Needs view: what people nearby have asked for. Tapping one opens it to offer an item. */
 export function NeedsList({ near, locationReady }: { near: Coordinates | null; locationReady: boolean }) {
+  const m = useT();
   const needs = useNeedsFeed(near, locationReady);
 
   if (!locationReady || needs.isPending) {
@@ -29,9 +31,9 @@ export function NeedsList({ near, locationReady }: { near: Coordinates | null; l
       ListFooterComponent={needs.isFetchingNextPage ? <ActivityIndicator color={colors.primary} /> : undefined}
       ListEmptyComponent={
         <EmptyState
-          title="Nobody nearby needs anything right now"
-          message="When people ask for something, it appears here and you can offer one of your items."
-          action={<Button title="Ask for something" variant="secondary" onPress={() => router.navigate('/donate')} />}
+          title={m.needsList.emptyTitle}
+          message={m.needsList.emptyMessage}
+          action={<Button title={m.common.askForSomething} variant="secondary" onPress={() => router.navigate('/donate')} />}
         />
       }
       renderItem={({ item }) => (

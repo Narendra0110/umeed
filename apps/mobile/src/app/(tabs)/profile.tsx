@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, StyleSheet, Text, View } from 'react-native';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import {
   Body,
@@ -12,6 +12,7 @@ import {
   ErrorBanner,
   ErrorState,
   Field,
+  LanguageSwitch,
   LinkButton,
   Loading,
   Screen,
@@ -19,23 +20,20 @@ import {
 } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
 import { useClearSkips } from '@/lib/explore';
-import { useProfile, useUpdateDisplayName } from '@/lib/profile';
+import { t, useT } from '@/lib/i18n';
+import { useProfile, useUpdateDisplayName, useUpdateLanguage } from '@/lib/profile';
+import { displayNameSchema } from '@/lib/schemas';
 import { useLogOut } from '@/lib/session';
 
-const schema = z.object({
-  displayName: z
-    .string()
-    .trim()
-    .min(2, 'Your name must be at least 2 characters')
-    .max(80, 'Your name must be at most 80 characters'),
-});
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<typeof displayNameSchema>;
 
-/** Profile: name and phone number, change the name, log out. */
+/** Profile: name and phone number, language, change the name, log out. */
 export default function ProfileScreen() {
+  const m = useT();
   const profile = useProfile(true);
   const logOut = useLogOut();
   const clearSkips = useClearSkips();
+  const updateLanguage = useUpdateLanguage();
 
   if (profile.isPending) {
     return <Loading />;
@@ -48,48 +46,55 @@ export default function ProfileScreen() {
           onRetry={() => profile.refetch()}
           retrying={profile.isFetching}
         />
-        <Button title="Log out" variant="secondary" onPress={logOut} />
+        <Button title={m.common.logOut} variant="secondary" onPress={logOut} />
       </Screen>
     );
   }
 
   const confirmLogOut = () =>
-    Alert.alert('Log out?', 'You will need your phone number and a new code to log in again.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Log out', style: 'destructive', onPress: logOut },
+    Alert.alert(m.profile.logOutTitle, m.profile.logOutMessage, [
+      { text: m.common.cancel, style: 'cancel' },
+      { text: m.common.logOut, style: 'destructive', onPress: logOut },
     ]);
 
   return (
     <Screen scroll edges={['top', 'left', 'right']}>
-      <Title>Profile</Title>
+      <Title>{m.profile.title}</Title>
       <NameEditor currentName={profile.data.displayName ?? ''} />
       <View style={styles.info}>
-        <Text style={styles.label}>Phone number</Text>
+        <Text style={styles.label}>{m.profile.phone}</Text>
         <Text style={styles.value}>{profile.data.phoneNumber}</Text>
-        <Body>Your phone number is shown only to the person you hand an item to, or receive one from.</Body>
+        <Body>{m.profile.phoneNote}</Body>
       </View>
-      <Button title="Blocked people" variant="secondary" onPress={() => router.push('/blocked')} />
+      <LanguageSwitch
+        onChange={(language) =>
+          updateLanguage.mutate(language, {
+            onError: (error) => Alert.alert(t().language.couldNotSave, errorMessage(error)),
+          })
+        }
+      />
+      <Button title={m.profile.blocked} variant="secondary" onPress={() => router.push('/blocked')} />
       <Button
-        title="Show hidden items again"
+        title={m.profile.showHidden}
         variant="secondary"
         loading={clearSkips.isPending}
         onPress={() =>
-          Alert.alert('Show hidden items again?', 'Items you marked “Not interested” will appear on Home again.', [
-            { text: 'Cancel', style: 'cancel' },
+          Alert.alert(m.profile.showHiddenTitle, m.profile.showHiddenMessage, [
+            { text: m.common.cancel, style: 'cancel' },
             {
-              text: 'Show them',
+              text: m.profile.showThem,
               onPress: () =>
                 clearSkips.mutate(undefined, {
-                  onSuccess: () => Alert.alert('Done', 'Hidden items will appear on Home again.'),
-                  onError: (error) => Alert.alert('Could not do that', errorMessage(error)),
+                  onSuccess: () => Alert.alert(t().profile.done, t().profile.doneMessage),
+                  onError: (error) => Alert.alert(t().profile.couldNotDo, errorMessage(error)),
                 }),
             },
           ])
         }
       />
-      <Button title="Log out" variant="secondary" onPress={confirmLogOut} />
+      <Button title={m.common.logOut} variant="secondary" onPress={confirmLogOut} />
       <View style={styles.danger}>
-        <LinkButton title="Delete my account" color={colors.error} onPress={() => router.push('/delete-account')} />
+        <LinkButton title={m.profile.deleteAccount} color={colors.error} onPress={() => router.push('/delete-account')} />
       </View>
     </Screen>
   );
@@ -97,6 +102,7 @@ export default function ProfileScreen() {
 
 function NameEditor({ currentName }: { currentName: string }) {
   'use no memo';
+  const m = useT();
   const [editing, setEditing] = useState(false);
   const update = useUpdateDisplayName();
   const {
@@ -104,15 +110,15 @@ function NameEditor({ currentName }: { currentName: string }) {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { displayName: currentName } });
+  } = useForm<FormValues>({ resolver: zodResolver(displayNameSchema), defaultValues: { displayName: currentName } });
 
   if (!editing) {
     return (
       <View style={styles.info}>
-        <Text style={styles.label}>Your name</Text>
+        <Text style={styles.label}>{m.common.yourName}</Text>
         <Text style={styles.value}>{currentName}</Text>
         <Button
-          title="Change name"
+          title={m.profile.changeName}
           variant="secondary"
           onPress={() => {
             reset({ displayName: currentName });
@@ -140,7 +146,7 @@ function NameEditor({ currentName }: { currentName: string }) {
         name="displayName"
         render={({ field: { onChange, onBlur, value } }) => (
           <Field
-            label="Your name"
+            label={m.common.yourName}
             autoCapitalize="words"
             autoComplete="name"
             maxLength={80}
@@ -152,8 +158,8 @@ function NameEditor({ currentName }: { currentName: string }) {
         )}
       />
       <ErrorBanner message={update.isError && !serverFieldError ? errorMessage(update.error) : null} />
-      <Button title="Save" onPress={onSubmit} loading={update.isPending} />
-      <Button title="Cancel" variant="secondary" onPress={() => setEditing(false)} />
+      <Button title={m.profile.save} onPress={onSubmit} loading={update.isPending} />
+      <Button title={m.common.cancel} variant="secondary" onPress={() => setEditing(false)} />
     </View>
   );
 }

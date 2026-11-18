@@ -5,20 +5,16 @@ import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, StyleSheet, Text, View } from 'react-native';
-import { z } from 'zod';
+import type { z } from 'zod';
 
 import { Body, Button, colors, ErrorBanner, Field, Screen, Title } from '@/components/ui';
 import { deleteAccountEverywhere, signedInSince } from '@/lib/account';
 import { errorMessage } from '@/lib/api';
 import { firebaseErrorMessage } from '@/lib/auth';
+import { t, useT } from '@/lib/i18n';
+import { codeSchema } from '@/lib/schemas';
 
-const schema = z.object({
-  code: z
-    .string()
-    .trim()
-    .regex(/^[0-9]{6}$/, 'Enter the 6-digit code'),
-});
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<typeof codeSchema>;
 
 type Confirmation = Awaited<ReturnType<typeof signInWithPhoneNumber>>;
 
@@ -28,6 +24,7 @@ type Confirmation = Awaited<ReturnType<typeof signInWithPhoneNumber>>;
  */
 export default function DeleteAccountScreen() {
   'use no memo';
+  const m = useT();
   const queryClient = useQueryClient();
   const phoneNumber = getAuth().currentUser?.phoneNumber ?? null;
   const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
@@ -40,7 +37,7 @@ export default function DeleteAccountScreen() {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { code: '' } });
+  } = useForm<FormValues>({ resolver: zodResolver(codeSchema), defaultValues: { code: '' } });
 
   const runDeletion = async () => {
     if (started.current) {
@@ -53,7 +50,7 @@ export default function DeleteAccountScreen() {
       await deleteAccountEverywhere();
       queryClient.clear();
       router.replace('/login');
-      Alert.alert('Account deleted', 'Your Umeed account and your details have been deleted.');
+      Alert.alert(t().deleteAccount.deletedTitle, t().deleteAccount.deletedMessage);
     } catch (e) {
       started.current = false;
       setDeleting(false);
@@ -77,7 +74,7 @@ export default function DeleteAccountScreen() {
 
   const sendCode = async () => {
     if (!phoneNumber) {
-      setError('Please log out and log in again, then try once more.');
+      setError(m.deleteAccount.reLogin);
       return;
     }
     setError(null);
@@ -113,24 +110,22 @@ export default function DeleteAccountScreen() {
 
   return (
     <Screen scroll>
-      <Title>Delete your account</Title>
-      <Body>This cannot be undone. When your account is deleted:</Body>
+      <Title>{m.deleteAccount.title}</Title>
+      <Body>{m.deleteAccount.intro}</Body>
       <View style={styles.list}>
-        <Text style={styles.point}>• Items you are still giving away are removed, with their photos.</Text>
-        <Text style={styles.point}>• Your open claims are withdrawn and your claim messages are erased.</Text>
-        <Text style={styles.point}>• Your name, phone number and pickup addresses are erased.</Text>
-        <Text style={styles.point}>
-          • Items you already handed over stay in the other person’s history as from “Umeed user”.
-        </Text>
+        <Text style={styles.point}>{m.deleteAccount.point1}</Text>
+        <Text style={styles.point}>{m.deleteAccount.point2}</Text>
+        <Text style={styles.point}>{m.deleteAccount.point3}</Text>
+        <Text style={styles.point}>{m.deleteAccount.point4}</Text>
       </View>
-      <Body>If you are in the middle of a pickup, finish or cancel it first.</Body>
+      <Body>{m.deleteAccount.pickupFirst}</Body>
 
       {!confirmation ? (
         <>
-          <Body>To confirm it is you, we will send a code to {phoneNumber ?? 'your number'}.</Body>
+          <Body>{m.deleteAccount.confirmIntro(phoneNumber ?? m.deleteAccount.yourNumber)}</Body>
           <ErrorBanner message={error} />
-          <Button title="Send code" variant="danger" onPress={sendCode} loading={sending} />
-          <Button title="Keep my account" variant="secondary" onPress={() => router.back()} />
+          <Button title={m.common.sendCode} variant="danger" onPress={sendCode} loading={sending} />
+          <Button title={m.deleteAccount.keep} variant="secondary" onPress={() => router.back()} />
         </>
       ) : (
         <>
@@ -139,7 +134,7 @@ export default function DeleteAccountScreen() {
             name="code"
             render={({ field: { onChange, onBlur, value } }) => (
               <Field
-                label="Code"
+                label={m.common.code}
                 placeholder="123456"
                 keyboardType="number-pad"
                 autoComplete="sms-otp"
@@ -154,12 +149,12 @@ export default function DeleteAccountScreen() {
           />
           <ErrorBanner message={error} />
           <Button
-            title="Delete my account"
+            title={m.deleteAccount.delete}
             variant="danger"
             onPress={onVerify}
             loading={isSubmitting || deleting}
           />
-          <Button title="Keep my account" variant="secondary" onPress={() => router.back()} />
+          <Button title={m.deleteAccount.keep} variant="secondary" onPress={() => router.back()} />
         </>
       )}
     </Screen>

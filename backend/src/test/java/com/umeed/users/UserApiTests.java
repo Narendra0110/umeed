@@ -64,6 +64,31 @@ class UserApiTests {
     }
 
     @Test
+    void languageStartsAsEnglishAndCanBeChanged() throws Exception {
+        mockMvc.perform(get("/api/v1/users/me").with(verifiedToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.language").value("en"));
+
+        mockMvc.perform(put("/api/v1/users/me/language").with(verifiedToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"language\":\"hi\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.language").value("hi"));
+        mockMvc.perform(get("/api/v1/users/me").with(verifiedToken()))
+                .andExpect(jsonPath("$.language").value("hi"));
+
+        mockMvc.perform(put("/api/v1/users/me/language").with(verifiedToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"language\":\"fr\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.fieldErrors[0].field").value("language"));
+        mockMvc.perform(put("/api/v1/users/me/language").with(verifiedToken())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void tokenWithoutPhoneNumberIsRefused() throws Exception {
         mockMvc.perform(get("/api/v1/users/me").with(jwt().jwt(token -> token.subject(FIREBASE_UID))))
                 .andExpect(status().isForbidden())

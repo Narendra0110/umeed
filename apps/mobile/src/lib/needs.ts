@@ -2,23 +2,14 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 
 import { apiFetch } from './api';
 import type { Coordinates } from './format';
+import { t } from './i18n';
 import type { NeedInput } from './schemas';
 import type { AcceptedOffer, Donation, Need, NeedStatus, Offer, OfferStatus, Page } from './types';
 
 const PAGE_SIZE = 20;
 
-export const needStatusLabels: Record<NeedStatus, string> = {
-  OPEN: 'Open',
-  FULFILLED: 'Fulfilled',
-  CLOSED: 'Closed',
-};
-
-export const offerStatusLabels: Record<OfferStatus, string> = {
-  PENDING: 'Waiting',
-  ACCEPTED: 'Chosen',
-  DECLINED: 'Not chosen',
-  WITHDRAWN: 'Withdrawn',
-};
+export const needStatusLabel = (status: NeedStatus) => t().labels.needStatus[status];
+export const offerStatusLabel = (status: OfferStatus) => t().labels.offerStatus[status];
 
 /** The items a donor can offer: only their own items that are still available. */
 export function offerableItems(donations: Donation[]): Donation[] {

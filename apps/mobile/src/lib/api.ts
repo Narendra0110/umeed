@@ -1,5 +1,7 @@
 import { getAuth } from '@react-native-firebase/auth';
 
+import { t, useLanguageStore } from './i18n';
+
 /**
  * The backend address. The default suits a phone connected by USB: run-android.cmd runs
  * "adb reverse tcp:8080 tcp:8080", so localhost:8080 on the phone reaches the PC's backend.
@@ -29,7 +31,7 @@ type RequestOptions = { method?: string; body?: unknown };
 export async function apiFetch<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const user = getAuth().currentUser;
   if (!user) {
-    throw new ApiError(401, 'Please log in again.');
+    throw new ApiError(401, t().errors.logInAgain);
   }
   const token = await user.getIdToken();
   const hasBody = options.body !== undefined;
@@ -43,6 +45,8 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: 'application/json',
+        // The backend answers with Hindi messages when asked (F07B).
+        'Accept-Language': useLanguageStore.getState().language,
         ...(hasBody && !isForm ? { 'Content-Type': 'application/json' } : {}),
       },
       body: !hasBody ? undefined : isForm ? (options.body as FormData) : JSON.stringify(options.body),
@@ -51,7 +55,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
     if (__DEV__) {
       console.warn(`Network request failed: ${options.method ?? 'GET'} ${API_URL}${path}`, cause);
     }
-    throw new ApiError(0, 'Cannot reach the Umeed server. Check that it is running.');
+    throw new ApiError(0, t().errors.noServer);
   }
 
   if (response.status === 204) {
@@ -59,7 +63,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
   }
   const data = parseJson(await response.text());
   if (!response.ok) {
-    const fallback = response.status === 401 ? 'Please log in again.' : 'Something went wrong. Please try again.';
+    const fallback = response.status === 401 ? t().errors.logInAgain : t().errors.generic;
     throw new ApiError(
       response.status,
       typeof data?.message === 'string' ? data.message : fallback,
@@ -86,23 +90,23 @@ export function fileUrl(path: string): string {
   return /^https?:\/\//.test(path) ? path : `${API_URL}${path}`;
 }
 
-/** A short message suitable for showing to the user. */
-/** The backend's answer to anything a suspended (or deleted) account tries to do. */
-export const ACCOUNT_NOT_ACTIVE = 'Account is not active';
-
-export const SUSPENDED_MESSAGE =
-  'Your account is suspended because of a report about your listings or needs. You cannot post, claim or chat until the Umeed team lifts it.';
+/**
+ * The backend's answer to anything a suspended (or deleted) account tries to do, in English and
+ * (from F07B, when the app asks for Hindi) in Hindi.
+ */
+export const ACCOUNT_NOT_ACTIVE = ['Account is not active', 'खाता सक्रिय नहीं है'];
 
 export function isAccountNotActive(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 403 && error.message === ACCOUNT_NOT_ACTIVE;
+  return error instanceof ApiError && error.status === 403 && ACCOUNT_NOT_ACTIVE.includes(error.message);
 }
 
+/** A short message suitable for showing to the user, in the current language. */
 export function errorMessage(error: unknown): string {
   if (isAccountNotActive(error)) {
-    return SUSPENDED_MESSAGE;
+    return t().errors.suspended;
   }
   if (error instanceof ApiError) {
     return error.fieldErrors[0]?.message ?? error.message;
   }
-  return 'Something went wrong. Please try again.';
+  return t().errors.generic;
 }
