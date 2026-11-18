@@ -18,6 +18,7 @@ import {
   Title,
 } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
+import { useClearSkips } from '@/lib/explore';
 import { useProfile, useUpdateDisplayName } from '@/lib/profile';
 import { useLogOut } from '@/lib/session';
 
@@ -34,6 +35,7 @@ type FormValues = z.infer<typeof schema>;
 export default function ProfileScreen() {
   const profile = useProfile(true);
   const logOut = useLogOut();
+  const clearSkips = useClearSkips();
 
   if (profile.isPending) {
     return <Loading />;
@@ -67,6 +69,24 @@ export default function ProfileScreen() {
         <Body>Your phone number is shown only to the person you hand an item to, or receive one from.</Body>
       </View>
       <Button title="Blocked people" variant="secondary" onPress={() => router.push('/blocked')} />
+      <Button
+        title="Show hidden items again"
+        variant="secondary"
+        loading={clearSkips.isPending}
+        onPress={() =>
+          Alert.alert('Show hidden items again?', 'Items you marked “Not interested” will appear on Home again.', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Show them',
+              onPress: () =>
+                clearSkips.mutate(undefined, {
+                  onSuccess: () => Alert.alert('Done', 'Hidden items will appear on Home again.'),
+                  onError: (error) => Alert.alert('Could not do that', errorMessage(error)),
+                }),
+            },
+          ])
+        }
+      />
       <Button title="Log out" variant="secondary" onPress={confirmLogOut} />
       <View style={styles.danger}>
         <LinkButton title="Delete my account" color={colors.error} onPress={() => router.push('/delete-account')} />

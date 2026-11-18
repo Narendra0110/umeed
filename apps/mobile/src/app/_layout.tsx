@@ -32,6 +32,7 @@ export default function RootLayout() {
         <Stack.Screen name="donation/[id]/claims" options={{ title: 'Claims' }} />
         <Stack.Screen name="donation/[id]/pickup" options={{ title: 'Pickup' }} />
         <Stack.Screen name="donation/[id]/report" options={{ title: 'Report listing', presentation: 'modal' }} />
+        <Stack.Screen name="explore" options={{ title: 'Search' }} />
         <Stack.Screen name="chat/[claimId]" options={{ title: 'Chat' }} />
         <Stack.Screen name="need/[id]/index" options={{ title: 'Need' }} />
         <Stack.Screen name="need/[id]/offer" options={{ title: 'Offer an item', presentation: 'modal' }} />

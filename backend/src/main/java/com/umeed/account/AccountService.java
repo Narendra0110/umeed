@@ -56,6 +56,7 @@ public class AccountService {
         claimService.eraseClaimant(caller.id());
         needService.eraseUser(caller.id());
         donationService.eraseDonor(caller.id());
+        donationService.forgetSkipsOf(caller.id());
         blockService.removeAllInvolving(caller.id());
         deviceService.removeAllFor(caller.id());
         chatService.removeMessagesBy(caller.id());

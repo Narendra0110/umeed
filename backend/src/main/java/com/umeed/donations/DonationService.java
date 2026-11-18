@@ -50,10 +50,12 @@ public class DonationService {
     private final ApplicationEventPublisher eventPublisher;
     private final ClaimedDonations claimedDonations;
     private final BlockedUsers blockedUsers;
+    private final DonationSkipRepository donationSkipRepository;
 
     DonationService(
             DonationRepository donationRepository,
             DonationImageRepository donationImageRepository,
+            DonationSkipRepository donationSkipRepository,
             FileStorage fileStorage,
             UserService userService,
             CategoryService categoryService,
@@ -62,6 +64,7 @@ public class DonationService {
             BlockedUsers blockedUsers) {
         this.donationRepository = donationRepository;
         this.donationImageRepository = donationImageRepository;
+        this.donationSkipRepository = donationSkipRepository;
         this.fileStorage = fileStorage;
         this.userService = userService;
         this.categoryService = categoryService;
@@ -123,8 +126,8 @@ public class DonationService {
 
     /**
      * The feed: available donations the caller can claim, newest first. The caller's own donations,
-     * the ones they have already claimed (in any claim status) and the items of people blocked
-     * either way are left out.
+     * the ones they have already claimed (in any claim status), the ones they marked "Not interested"
+     * and the items of people blocked either way are left out.
      */
     @Transactional(readOnly = true)
     public PageResponse<DonationResponse> listFeed(String firebaseUid, Pageable pageable) {
@@ -148,12 +151,64 @@ public class DonationService {
     }
 
     /**
-     * The ids to leave out of the caller's feed. SQL "not in ()" with an empty list is invalid, so an
-     * empty result is replaced by one id that no donation can have (donation ids are random UUIDs).
+     * Search with filters (F05). Same exclusions as the feed, except that items marked "Not interested"
+     * are still found: a search is deliberate. With a location, only items within maxKm, nearest first.
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<DonationResponse> search(String firebaseUid, DonationSearch filters, Pageable pageable) {
+        UserResponse caller = userService.requireActiveUser(firebaseUid);
+        Set<UUID> claimed = claimedDonations.donationIdsClaimedBy(caller.id());
+        Set<UUID> excluded = claimed.isEmpty() ? Set.of(NO_DONATION) : claimed;
+        String text = DonationSearch.likePattern(filters.text());
+        String city = DonationSearch.likePattern(filters.city());
+        String category = filters.categoryId() == null ? "" : filters.categoryId().toString();
+        Page<Donation> page = filters.hasLocation()
+                ? donationRepository.searchNearestFirst(
+                        caller.id(), excluded, hiddenDonorsFor(caller.id()), text, category, city,
+                        filters.latitude(), filters.longitude(),
+                        filters.maxKm() == null ? DonationSearch.ANY_DISTANCE_KM : filters.maxKm(),
+                        pageable)
+                : donationRepository.searchNewestFirst(
+                        caller.id(), excluded, hiddenDonorsFor(caller.id()), text, category, city, pageable);
+        return PageResponse.of(toResponses(page));
+    }
+
+    /**
+     * "Not interested": the item no longer appears on the caller's Home. Marking twice changes nothing.
+     */
+    @Transactional
+    public void skip(String firebaseUid, UUID donationId) {
+        UserResponse caller = userService.requireActiveUser(firebaseUid);
+        donationRepository.findById(donationId)
+                .filter(found -> found.getStatus() != Donation.Status.REMOVED)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Donation not found"));
+        if (!donationSkipRepository.existsById(new DonationSkip.Key(caller.id(), donationId))) {
+            donationSkipRepository.saveAndFlush(DonationSkip.of(caller.id(), donationId));
+        }
+    }
+
+    /** "Show hidden items again": clears the caller's "Not interested" list. */
+    @Transactional
+    public void clearSkips(String firebaseUid) {
+        UserResponse caller = userService.requireActiveUser(firebaseUid);
+        donationSkipRepository.deleteAllByUserId(caller.id());
+    }
+
+    /** For account deletion: forgets the user's "Not interested" list. */
+    @Transactional
+    public void forgetSkipsOf(UUID userId) {
+        donationSkipRepository.deleteAllByUserId(userId);
+    }
+
+    /**
+     * The ids to leave out of the caller's Home: items they already claimed and items they marked
+     * "Not interested". SQL "not in ()" with an empty list is invalid, so an empty result is replaced
+     * by one id that no donation can have (donation ids are random UUIDs).
      */
     private Set<UUID> alreadyClaimedBy(UUID userId) {
-        Set<UUID> claimed = claimedDonations.donationIdsClaimedBy(userId);
-        return claimed.isEmpty() ? Set.of(NO_DONATION) : claimed;
+        Set<UUID> excluded = new HashSet<>(claimedDonations.donationIdsClaimedBy(userId));
+        excluded.addAll(donationSkipRepository.findDonationIdsByUserId(userId));
+        return excluded.isEmpty() ? Set.of(NO_DONATION) : excluded;
     }
 
     /** Donors whose items the caller must not see. Same placeholder rule as alreadyClaimedBy. */

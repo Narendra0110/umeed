@@ -76,6 +76,56 @@ class DonationController {
         return donationService.listMine(jwt.getSubject(), pageRequest(page, size));
     }
 
+    /**
+     * Search (F05). All filters are optional: q (words in the title or description), categoryId, city,
+     * and lat with lng (nearest first). maxKm (1 to 500) limits the distance and needs lat and lng.
+     */
+    @GetMapping("/search")
+    PageResponse<DonationResponse> search(
+            @AuthenticationPrincipal Jwt jwt,
+            @RequestParam(name = "q", required = false) String text,
+            @RequestParam(name = "categoryId", required = false) UUID categoryId,
+            @RequestParam(name = "city", required = false) String city,
+            @RequestParam(name = "lat", required = false) Double latitude,
+            @RequestParam(name = "lng", required = false) Double longitude,
+            @RequestParam(name = "maxKm", required = false) Double maxKm,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size) {
+        if ((latitude == null) != (longitude == null)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Send both lat and lng, or neither");
+        }
+        if (latitude != null && (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid location");
+        }
+        if (maxKm != null && latitude == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A distance limit needs your location");
+        }
+        if (maxKm != null && (maxKm < 1 || maxKm > 500)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "The distance must be between 1 and 500 km");
+        }
+        if ((text != null && text.length() > 100) || (city != null && city.length() > 100)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Search words must be at most 100 characters");
+        }
+        return donationService.search(
+                jwt.getSubject(),
+                new DonationSearch(text, categoryId, city, latitude, longitude, maxKm),
+                pageRequest(page, size));
+    }
+
+    /** "Not interested": hides the item from the caller's Home. */
+    @PostMapping("/{id}/skip")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void skip(@AuthenticationPrincipal Jwt jwt, @PathVariable("id") UUID id) {
+        donationService.skip(jwt.getSubject(), id);
+    }
+
+    /** "Show hidden items again". */
+    @DeleteMapping("/skips")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void clearSkips(@AuthenticationPrincipal Jwt jwt) {
+        donationService.clearSkips(jwt.getSubject());
+    }
+
     @GetMapping("/{id}")
     DonationResponse getOne(@PathVariable("id") UUID id) {
         return donationService.getOne(id);

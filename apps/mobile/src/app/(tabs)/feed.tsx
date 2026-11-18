@@ -9,6 +9,7 @@ import { PhotoCarousel } from '@/components/photos';
 import { Button, colors, EmptyState, ErrorState, LinkButton, Loading, Pill, Segmented } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { useFeed } from '@/lib/donations';
+import { useSkipDonation } from '@/lib/explore';
 import { conditionLabels, type Coordinates, distanceKm, formatDistance } from '@/lib/format';
 import { useCurrentLocation } from '@/lib/location';
 import type { Donation } from '@/lib/types';
@@ -19,7 +20,8 @@ const NOTICE_MS = 3500;
 /**
  * Home has two views: Items (below) and Needs (what people nearby asked for, see NeedsList).
  * Items: one donated item per screen (section 2B of the project index). Swiping up moves to the
- * next item. Nearby items come first when location is allowed. Skipped items are not remembered.
+ * next item. Nearby items come first when location is allowed. Swiping past an item does not hide it;
+ * "Not interested" does (F05), until the list is cleared in Profile.
  * The server sends only items the user can claim: never their own, never ones they already claimed.
  * After a claim the feed refreshes, the item drops out and the next one takes its place.
  */
@@ -31,6 +33,7 @@ export default function FeedScreen() {
   const [claiming, setClaiming] = useState<Donation | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [view, setView] = useState<'items' | 'needs'>('items');
+  const skip = useSkipDonation();
 
   useEffect(() => {
     if (!notice) {
@@ -75,7 +78,18 @@ export default function FeedScreen() {
               feed.isFetchingNextPage ? <ActivityIndicator style={styles.footer} color={colors.primary} /> : undefined
             }
             renderItem={({ item }) => (
-              <FeedPost donation={item} height={height} near={coords} onClaim={() => setClaiming(item)} />
+              <FeedPost
+                donation={item}
+                height={height}
+                near={coords}
+                onClaim={() => setClaiming(item)}
+                onSkip={() =>
+                  skip.mutate(item.id, {
+                    onSuccess: () => setNotice(`“${item.title}” is hidden. Show it again from Profile.`),
+                    onError: (error) => setNotice(errorMessage(error)),
+                  })
+                }
+              />
             )}
           />
         ) : null}
@@ -87,6 +101,13 @@ export default function FeedScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <Text style={styles.brand}>Umeed</Text>
+        <Pressable
+          onPress={() => router.push('/explore')}
+          accessibilityRole="button"
+          accessibilityLabel="Search items"
+          style={({ pressed }) => [styles.searchButton, pressed ? styles.searchPressed : null]}>
+          <Text style={styles.searchText}>🔍 Search</Text>
+        </Pressable>
         {location.data?.permission === 'denied' ? (
           <Pressable onPress={() => location.refetch()} accessibilityRole="button">
             <Text style={styles.locationHint}>Showing newest. Tap to use your location.</Text>
@@ -133,9 +154,10 @@ type FeedPostProps = {
   height: number;
   near: Coordinates | null;
   onClaim: () => void;
+  onSkip: () => void;
 };
 
-function FeedPost({ donation, height, near, onClaim }: FeedPostProps) {
+function FeedPost({ donation, height, near, onClaim, onSkip }: FeedPostProps) {
   const [width, setWidth] = useState(0);
   const photoHeight = Math.round(height * 0.58);
   const place = `${donation.area}, ${donation.city}`;
@@ -165,11 +187,14 @@ function FeedPost({ donation, height, near, onClaim }: FeedPostProps) {
         <Button title="Claim" onPress={onClaim} />
         <View style={styles.bottomRow}>
           <Text style={styles.swipeHint}>Swipe up for the next item</Text>
-          <LinkButton
-            title="Report"
-            color={colors.muted}
-            onPress={() => router.push(`/donation/${donation.id}/report`)}
-          />
+          <View style={styles.links}>
+            <LinkButton title="Not interested" color={colors.muted} onPress={onSkip} />
+            <LinkButton
+              title="Report"
+              color={colors.muted}
+              onPress={() => router.push(`/donation/${donation.id}/report`)}
+            />
+          </View>
         </View>
       </View>
     </View>
@@ -188,6 +213,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   brand: { fontSize: 24, fontWeight: '800', color: colors.primary },
+  searchButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  searchPressed: { backgroundColor: colors.surface },
+  searchText: { fontSize: 14, color: colors.text },
   switch: { paddingHorizontal: 16, paddingBottom: 8 },
   locationHint: { flexShrink: 1, fontSize: 13, color: colors.muted, textAlign: 'right' },
   footer: { padding: 24 },
@@ -208,5 +242,6 @@ const styles = StyleSheet.create({
   },
   noticeText: { color: colors.success, fontSize: 15, fontWeight: '600', textAlign: 'center' },
   bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 32 },
-  swipeHint: { fontSize: 13, color: colors.muted },
+  swipeHint: { fontSize: 13, color: colors.muted, flexShrink: 1 },
+  links: { flexDirection: 'row', gap: 16 },
 });

@@ -82,6 +82,87 @@ interface DonationRepository extends JpaRepository<Donation, UUID> {
             @Param("lng") double longitude,
             Pageable pageable);
 
+    /**
+     * Search, newest first. Same exclusions as the feed (except "Not interested", which only affects Home).
+     * Filters never receive null: {@code text} and {@code city} are ILIKE patterns ('%' matches everything)
+     * and an empty {@code categoryId} means any category.
+     */
+    @Query(value = """
+            SELECT d.*
+            FROM donations d
+            WHERE d.status = 'AVAILABLE'
+              AND d.donor_id <> :callerId
+              AND d.id NOT IN (:excluded)
+              AND d.donor_id NOT IN (:hiddenDonors)
+              AND (d.title ILIKE :text OR d.description ILIKE :text)
+              AND (:categoryId = '' OR CAST(d.category_id AS text) = :categoryId)
+              AND d.city ILIKE :city
+            ORDER BY d.created_at DESC
+            """,
+            countQuery = """
+            SELECT count(*) FROM donations d
+            WHERE d.status = 'AVAILABLE' AND d.donor_id <> :callerId AND d.id NOT IN (:excluded)
+              AND d.donor_id NOT IN (:hiddenDonors)
+              AND (d.title ILIKE :text OR d.description ILIKE :text)
+              AND (:categoryId = '' OR CAST(d.category_id AS text) = :categoryId)
+              AND d.city ILIKE :city
+            """,
+            nativeQuery = true)
+    Page<Donation> searchNewestFirst(
+            @Param("callerId") UUID callerId,
+            @Param("excluded") Collection<UUID> excluded,
+            @Param("hiddenDonors") Collection<UUID> hiddenDonors,
+            @Param("text") String text,
+            @Param("categoryId") String categoryId,
+            @Param("city") String city,
+            Pageable pageable);
+
+    /**
+     * Search near a point: only items within {@code maxKm}, nearest first, then newest. Same filters as
+     * searchNewestFirst. "No distance limit" is passed as a very large maxKm.
+     */
+    @Query(value = """
+            SELECT d.*
+            FROM donations d
+            WHERE d.status = 'AVAILABLE'
+              AND d.donor_id <> :callerId
+              AND d.id NOT IN (:excluded)
+              AND d.donor_id NOT IN (:hiddenDonors)
+              AND (d.title ILIKE :text OR d.description ILIKE :text)
+              AND (:categoryId = '' OR CAST(d.category_id AS text) = :categoryId)
+              AND d.city ILIKE :city
+              AND 6371 * acos(LEAST(1.0, GREATEST(-1.0,
+                      cos(radians(:lat)) * cos(radians(d.latitude)) * cos(radians(d.longitude) - radians(:lng))
+                      + sin(radians(:lat)) * sin(radians(d.latitude))))) <= :maxKm
+            ORDER BY 6371 * acos(LEAST(1.0, GREATEST(-1.0,
+                         cos(radians(:lat)) * cos(radians(d.latitude)) * cos(radians(d.longitude) - radians(:lng))
+                         + sin(radians(:lat)) * sin(radians(d.latitude))))) ASC,
+                     d.created_at DESC
+            """,
+            countQuery = """
+            SELECT count(*) FROM donations d
+            WHERE d.status = 'AVAILABLE' AND d.donor_id <> :callerId AND d.id NOT IN (:excluded)
+              AND d.donor_id NOT IN (:hiddenDonors)
+              AND (d.title ILIKE :text OR d.description ILIKE :text)
+              AND (:categoryId = '' OR CAST(d.category_id AS text) = :categoryId)
+              AND d.city ILIKE :city
+              AND 6371 * acos(LEAST(1.0, GREATEST(-1.0,
+                      cos(radians(:lat)) * cos(radians(d.latitude)) * cos(radians(d.longitude) - radians(:lng))
+                      + sin(radians(:lat)) * sin(radians(d.latitude))))) <= :maxKm
+            """,
+            nativeQuery = true)
+    Page<Donation> searchNearestFirst(
+            @Param("callerId") UUID callerId,
+            @Param("excluded") Collection<UUID> excluded,
+            @Param("hiddenDonors") Collection<UUID> hiddenDonors,
+            @Param("text") String text,
+            @Param("categoryId") String categoryId,
+            @Param("city") String city,
+            @Param("lat") double latitude,
+            @Param("lng") double longitude,
+            @Param("maxKm") double maxKm,
+            Pageable pageable);
+
     /** Loads a donation and locks its row until the transaction ends, so two changes cannot run at once. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select d from Donation d where d.id = :id")
