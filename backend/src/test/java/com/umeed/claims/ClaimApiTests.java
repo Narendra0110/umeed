@@ -131,6 +131,7 @@ class ClaimApiTests {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("PENDING"))
                 .andExpect(jsonPath("$.donationTitle").value("Winter jacket"))
+                .andExpect(jsonPath("$.donationStatus").value("AVAILABLE"))
                 .andReturn().getResponse().getContentAsString();
         return JsonPath.read(body, "$.id");
     }
@@ -165,7 +166,8 @@ class ClaimApiTests {
         mockMvc.perform(post("/api/v1/claims/" + ashaClaim + "/accept").with(donor()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACCEPTED"))
-                .andExpect(jsonPath("$.claimantName").value("Asha"));
+                .andExpect(jsonPath("$.claimantName").value("Asha"))
+                .andExpect(jsonPath("$.donationStatus").value("RESERVED"));
 
         // The item is reserved and has left the feed.
         mockMvc.perform(get("/api/v1/donations/" + donationId).with(asha()))
@@ -184,7 +186,8 @@ class ClaimApiTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].id").value(bilalClaim))
                 .andExpect(jsonPath("$.items[0].status").value("REJECTED"))
-                .andExpect(jsonPath("$.items[0].donationTitle").value("Winter jacket"));
+                .andExpect(jsonPath("$.items[0].donationTitle").value("Winter jacket"))
+                .andExpect(jsonPath("$.items[0].donationStatus").value("RESERVED"));
 
         // Nobody else can claim a reserved item, and a second acceptance is refused.
         mockMvc.perform(post("/api/v1/donations/" + donationId + "/claims").with(chitra()))

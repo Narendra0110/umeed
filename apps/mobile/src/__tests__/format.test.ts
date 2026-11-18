@@ -32,17 +32,33 @@ describe('groupMyDonations', () => {
 });
 
 describe('groupMyClaims', () => {
-  const claim = (id: string, status: ClaimStatus) => ({ id, status });
+  const claim = (id: string, status: ClaimStatus, donationStatus: DonationStatus = 'AVAILABLE') => ({
+    id,
+    status,
+    donationStatus,
+  });
 
   it('puts accepted first, then waiting, then rejected and withdrawn together', () => {
     const sections = groupMyClaims([
       claim('a', 'PENDING'),
-      claim('b', 'REJECTED'),
-      claim('c', 'ACCEPTED'),
+      claim('b', 'REJECTED', 'RESERVED'),
+      claim('c', 'ACCEPTED', 'RESERVED'),
       claim('d', 'WITHDRAWN'),
     ]);
     expect(sections.map((s) => s.key)).toEqual(['accepted', 'pending', 'closed']);
     expect(sections[2].data.map((c) => c.id)).toEqual(['b', 'd']);
+  });
+
+  it('moves an accepted claim to Received once the item is handed over', () => {
+    const sections = groupMyClaims([
+      claim('a', 'ACCEPTED', 'COMPLETED'),
+      claim('b', 'ACCEPTED', 'RESERVED'),
+      claim('c', 'PENDING'),
+    ]);
+    expect(sections.map((s) => s.key)).toEqual(['accepted', 'pending', 'received']);
+    expect(sections[0].data.map((c) => c.id)).toEqual(['b']);
+    expect(sections[2].data.map((c) => c.id)).toEqual(['a']);
+    expect(sections[2].title).toBe('Received');
   });
 });
 

@@ -9,9 +9,13 @@ import { ApiError, errorMessage } from '@/lib/api';
 import { useDonation, useRemoveDonation } from '@/lib/donations';
 import { conditionLabels, distanceKm, donationStatusLabels, formatDistance, timeAgo } from '@/lib/format';
 import { useCurrentLocation } from '@/lib/location';
+import { usePickup } from '@/lib/pickup';
 import { useProfile } from '@/lib/profile';
 
-/** One donated item. The donor sees their own actions; everyone else can claim or report. */
+/**
+ * One donated item. The donor sees their own actions; the accepted receiver is sent to the pickup
+ * details; everyone else can claim (while available) or report.
+ */
 export default function DonationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const donation = useDonation(id);
@@ -21,6 +25,15 @@ export default function DonationScreen() {
   const { width } = useWindowDimensions();
   const [claimOpen, setClaimOpen] = useState(false);
   const [claimed, setClaimed] = useState(false);
+  // Once an item is taken, only the donor and the accepted receiver can read its pickup details.
+  // For anyone else who is not the donor, that answer tells whether the item was reserved for them.
+  const takenByOther =
+    donation.data !== undefined &&
+    profile.data !== undefined &&
+    donation.data.donorId !== profile.data.id &&
+    (donation.data.status === 'RESERVED' || donation.data.status === 'COMPLETED');
+  const pickup = usePickup(id, { enabled: takenByOther, probe: true });
+  const isReceiver = takenByOther && pickup.isSuccess;
 
   if (donation.isPending || profile.isPending) {
     return <Loading />;
@@ -101,8 +114,23 @@ export default function DonationScreen() {
         </View>
       ) : (
         <View style={styles.actions}>
-          {item.status !== 'AVAILABLE' ? (
-            <Body>This item has already been reserved for someone.</Body>
+          {isReceiver ? (
+            <>
+              <Body>
+                {item.status === 'COMPLETED'
+                  ? 'You received this item.'
+                  : 'This item is reserved for you. Call the donor to arrange the pickup.'}
+              </Body>
+              <Button title="Pickup details" onPress={() => router.push(`/donation/${item.id}/pickup`)} />
+            </>
+          ) : item.status !== 'AVAILABLE' ? (
+            takenByOther && pickup.isPending ? null : (
+              <Body>
+                {item.status === 'COMPLETED'
+                  ? 'This item has already been given away.'
+                  : 'This item has already been reserved for someone else.'}
+              </Body>
+            )
           ) : claimed ? (
             <View style={styles.claimedBox}>
               <Text style={styles.claimedText}>Claimed. You will find it under Activity.</Text>

@@ -4,10 +4,19 @@ import type { DonationInput } from '@/lib/schemas';
 import type { Pickup } from '@/lib/types';
 
 jest.mock('@react-native-firebase/auth', () => ({ getAuth: jest.fn() }));
+// expo-file-system's File is native; this stand-in only remembers which photo it points to.
+jest.mock('expo-file-system', () => ({
+  File: class MockFile {
+    uri: string;
+    constructor(mockUri: string) {
+      this.uri = mockUri;
+    }
+  },
+}));
 
 /**
- * The test environment's FormData is not React Native's (which accepts { uri, name, type } files),
- * so this stand-in records exactly what the app appends.
+ * The test environment's FormData is not the phone's, so this stand-in records exactly what the
+ * app appends.
  */
 class RecordingFormData {
   readonly parts: [string, unknown][] = [];
@@ -57,15 +66,18 @@ describe('donationFormData', () => {
     });
   });
 
-  it('adds each photo as a file named "photos", cover first', () => {
+  it('adds each photo as a file object named "photos", cover first', () => {
     const form = donationFormData(input, { latitude: 18.5, longitude: 73.8 });
     const files = partsOf(form)
       .filter(([name]) => name === 'photos')
       .map(([, value]) => value);
-    expect(files).toEqual([
-      { uri: 'file:///a.jpg', name: 'a.jpg', type: 'image/jpeg' },
-      { uri: 'file:///b.jpg', name: 'b.jpg', type: 'image/jpeg' },
+    // A plain { uri, name, type } object is rejected by Expo's fetch on the phone, so each photo
+    // must be a File, not a plain object.
+    expect(files.map((f) => (f as { constructor: { name: string } }).constructor.name)).toEqual([
+      'MockFile',
+      'MockFile',
     ]);
+    expect(files.map((f) => (f as { uri: string }).uri)).toEqual(['file:///a.jpg', 'file:///b.jpg']);
   });
 });
 

@@ -60,7 +60,7 @@ public class ClaimService {
         } catch (DataIntegrityViolationException e) {
             throw alreadyClaimed();
         }
-        return ClaimResponse.from(claim, donation.title(), claimant.displayName());
+        return ClaimResponse.from(claim, donation.title(), donation.status(), claimant.displayName());
     }
 
     /**
@@ -81,7 +81,10 @@ public class ClaimService {
         Map<UUID, String> names = userService.displayNamesByIds(claimantIds);
         return claims.stream()
                 .map(claim -> ClaimResponse.from(
-                        claim, donation.title(), names.getOrDefault(claim.getClaimantId(), UNKNOWN_NAME)))
+                        claim,
+                        donation.title(),
+                        donation.status(),
+                        names.getOrDefault(claim.getClaimantId(), UNKNOWN_NAME)))
                 .toList();
     }
 
@@ -105,7 +108,7 @@ public class ClaimService {
         }
         claimRepository.changeStatusForDonation(donationId, Claim.Status.PENDING, Claim.Status.REJECTED, now);
 
-        return toResponse(reload(claimId), donation.title());
+        return toResponse(reload(claimId), donation);
     }
 
     /**
@@ -122,8 +125,8 @@ public class ClaimService {
         if (claimRepository.changeStatus(claimId, Claim.Status.PENDING, Claim.Status.WITHDRAWN, Instant.now()) == 0) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Only a pending claim can be withdrawn");
         }
-        String title = donationService.titlesByIds(List.of(donationId)).getOrDefault(donationId, "");
-        return toResponse(reload(claimId), title);
+        DonationSummary donation = donationService.summariesByIds(List.of(donationId)).get(donationId);
+        return toResponse(reload(claimId), donation);
     }
 
     /**
@@ -137,10 +140,12 @@ public class ClaimService {
         for (Claim claim : page.getContent()) {
             donationIds.add(claim.getDonationId());
         }
-        Map<UUID, String> titles = donationService.titlesByIds(donationIds);
+        Map<UUID, DonationSummary> donations = donationService.summariesByIds(donationIds);
         String name = caller.displayName() != null ? caller.displayName() : UNKNOWN_NAME;
-        return PageResponse.of(page.map(claim ->
-                ClaimResponse.from(claim, titles.getOrDefault(claim.getDonationId(), ""), name)));
+        return PageResponse.of(page.map(claim -> {
+            DonationSummary donation = donations.get(claim.getDonationId());
+            return ClaimResponse.from(claim, titleOf(donation), statusOf(donation), name);
+        }));
     }
 
     // ----- For the pickup module -----
@@ -192,10 +197,19 @@ public class ClaimService {
         return claimRepository.findById(claimId).orElseThrow(ClaimService::claimNotFound);
     }
 
-    private ClaimResponse toResponse(Claim claim, String donationTitle) {
+    private ClaimResponse toResponse(Claim claim, DonationSummary donation) {
         String name = userService.displayNamesByIds(List.of(claim.getClaimantId()))
                 .getOrDefault(claim.getClaimantId(), UNKNOWN_NAME);
-        return ClaimResponse.from(claim, donationTitle, name);
+        return ClaimResponse.from(claim, titleOf(donation), statusOf(donation), name);
+    }
+
+    // A claim's donation always exists (rows are never deleted); these only guard against a missing lookup.
+    private static String titleOf(DonationSummary donation) {
+        return donation != null ? donation.title() : "";
+    }
+
+    private static String statusOf(DonationSummary donation) {
+        return donation != null ? donation.status() : null;
     }
 
     private static ResponseStatusException claimNotFound() {

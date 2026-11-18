@@ -47,7 +47,10 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
       },
       body: !hasBody ? undefined : isForm ? (options.body as FormData) : JSON.stringify(options.body),
     });
-  } catch {
+  } catch (cause) {
+    if (__DEV__) {
+      console.warn(`Network request failed: ${options.method ?? 'GET'} ${API_URL}${path}`, cause);
+    }
     throw new ApiError(0, 'Cannot reach the Umeed server. Check that it is running.');
   }
 

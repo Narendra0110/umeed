@@ -3,11 +3,17 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiFetch } from './api';
 import type { Pickup } from './types';
 
-/** Private pickup details. The backend answers 403 for anyone but the donor and the accepted receiver. */
-export function usePickup(donationId: string) {
+/**
+ * Private pickup details. The backend answers 403 for anyone but the donor and the accepted receiver,
+ * so a successful answer also proves the signed-in user is one of the two. With `probe`, the query
+ * runs only when `enabled` is true and does not retry, because a 403 is an expected answer there.
+ */
+export function usePickup(donationId: string, options: { enabled?: boolean; probe?: boolean } = {}) {
   return useQuery({
     queryKey: ['pickup', donationId],
     queryFn: () => apiFetch<Pickup>(`/api/v1/donations/${donationId}/pickup`),
+    enabled: options.enabled ?? true,
+    ...(options.probe ? { retry: false } : {}),
   });
 }
 

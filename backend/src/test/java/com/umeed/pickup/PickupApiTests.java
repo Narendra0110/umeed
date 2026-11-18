@@ -220,6 +220,13 @@ class PickupApiTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("COMPLETED"));
 
+        // The receiver's claim stays ACCEPTED, and the item's own status tells the app it was handed over.
+        mockMvc.perform(get("/api/v1/claims/mine").with(asha()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].id").value(ashaClaim))
+                .andExpect(jsonPath("$.items[0].status").value("ACCEPTED"))
+                .andExpect(jsonPath("$.items[0].donationStatus").value("COMPLETED"));
+
         // A completed donation cannot be cancelled or claimed.
         mockMvc.perform(post(pickupUrl() + "/cancel").with(donor()))
                 .andExpect(status().isConflict());

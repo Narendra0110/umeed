@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { File } from 'expo-file-system';
 
 import { apiFetch } from './api';
 import type { Coordinates } from './format';
@@ -68,8 +69,10 @@ export function donationFormData(input: DonationInput, location: Coordinates): F
   form.append('longitude', String(location.longitude));
   form.append('pickupAddress', input.pickupAddress);
   for (const photo of input.photos) {
-    // React Native's FormData accepts a file as { uri, name, type }.
-    form.append('photos', { uri: photo.uri, name: photo.name, type: photo.type } as unknown as Blob);
+    // Expo replaces the global fetch, and its multipart encoder only accepts real file objects,
+    // not React Native's old { uri, name, type } shape (that fails before anything is sent).
+    // An expo-file-system File reads the shrunk JPEG from the phone and supplies its name and type.
+    form.append('photos', new File(photo.uri));
   }
   return form;
 }

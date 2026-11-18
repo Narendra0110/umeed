@@ -43,6 +43,8 @@ export type Claim = {
   id: string;
   donationId: string;
   donationTitle: string;
+  /** The item's own status. An ACCEPTED claim on a COMPLETED item has been handed over. */
+  donationStatus: DonationStatus | null;
   claimantId: string;
   claimantName: string;
   message: string | null;

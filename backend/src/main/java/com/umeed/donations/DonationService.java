@@ -261,15 +261,15 @@ public class DonationService {
     }
 
     /**
-     * Titles for the given donation ids, including reserved, completed and removed ones.
+     * Summaries (title, status) for the given donation ids, including reserved, completed and removed ones.
      */
     @Transactional(readOnly = true)
-    public Map<UUID, String> titlesByIds(Collection<UUID> donationIds) {
-        Map<UUID, String> titles = new HashMap<>();
+    public Map<UUID, DonationSummary> summariesByIds(Collection<UUID> donationIds) {
+        Map<UUID, DonationSummary> summaries = new HashMap<>();
         for (Donation donation : donationRepository.findAllById(donationIds)) {
-            titles.put(donation.getId(), donation.getTitle());
+            summaries.put(donation.getId(), DonationSummary.from(donation));
         }
-        return titles;
+        return summaries;
     }
 
     /**

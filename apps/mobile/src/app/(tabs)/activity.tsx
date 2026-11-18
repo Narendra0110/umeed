@@ -153,20 +153,29 @@ function MyClaims() {
       onEndReached={() => claims.hasNextPage && !claims.isFetchingNextPage && claims.fetchNextPage()}
       ListFooterComponent={claims.isFetchingNextPage ? <ActivityIndicator color={colors.primary} /> : undefined}
       renderSectionHeader={({ section }) => <SectionTitle>{section.title}</SectionTitle>}
-      renderItem={({ item }) => (
+      renderItem={({ item }) => {
+        // A claim stays ACCEPTED after the handover; the item's status shows it was received.
+        const received = item.status === 'ACCEPTED' && item.donationStatus === 'COMPLETED';
+        return (
         <ListRow
           title={item.donationTitle}
           subtitle={item.message ? `Your message: ${item.message}` : `Claimed ${timeAgo(item.createdAt)}`}
-          extra={<Pill label={claimStatusLabels[item.status]} tone={claimTone[item.status]} />}
+          extra={
+            received ? (
+              <Pill label="Received" tone="success" />
+            ) : (
+              <Pill label={claimStatusLabels[item.status]} tone={claimTone[item.status]} />
+            )
+          }
           onPress={
-            item.status === 'ACCEPTED'
-              ? () => router.push(`/donation/${item.donationId}/pickup`)
-              : item.status === 'PENDING'
-                ? () => router.push(`/donation/${item.donationId}`)
+            received || item.status === 'PENDING'
+              ? () => router.push(`/donation/${item.donationId}`)
+              : item.status === 'ACCEPTED'
+                ? () => router.push(`/donation/${item.donationId}/pickup`)
                 : undefined
           }
           actions={
-            item.status === 'PENDING' ? (
+            received ? undefined : item.status === 'PENDING' ? (
               <View style={styles.flex}>
                 <Button
                   title="Withdraw claim"
@@ -182,7 +191,8 @@ function MyClaims() {
             ) : undefined
           }
         />
-      )}
+        );
+      }}
     />
   );
 }

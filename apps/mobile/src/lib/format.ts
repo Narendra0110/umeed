@@ -40,11 +40,23 @@ export function groupMyDonations<T extends { status: DonationStatus }>(items: T[
   ]);
 }
 
-/** Sections for "My claims": accepted first (they need action), then waiting, then closed. */
-export function groupMyClaims<T extends { status: ClaimStatus }>(items: T[]): Section<T>[] {
+/**
+ * Sections for "My claims": accepted items still to pick up first (they need action), then waiting,
+ * then items already received, then closed. A claim stays ACCEPTED after the handover; the item's own
+ * status (COMPLETED) is what shows it was received.
+ */
+export function groupMyClaims<T extends { status: ClaimStatus; donationStatus: DonationStatus | null }>(
+  items: T[],
+): Section<T>[] {
+  const received = (c: T) => c.status === 'ACCEPTED' && c.donationStatus === 'COMPLETED';
   return nonEmpty([
-    { key: 'accepted', title: 'Accepted – arrange pickup', data: items.filter((c) => c.status === 'ACCEPTED') },
+    {
+      key: 'accepted',
+      title: 'Accepted – arrange pickup',
+      data: items.filter((c) => c.status === 'ACCEPTED' && !received(c)),
+    },
     { key: 'pending', title: 'Waiting for the donor', data: items.filter((c) => c.status === 'PENDING') },
+    { key: 'received', title: 'Received', data: items.filter(received) },
     {
       key: 'closed',
       title: 'Closed',
