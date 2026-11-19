@@ -18,6 +18,7 @@ import {
   Screen,
   Title,
 } from '@/components/ui';
+import { font } from '@/components/theme';
 import { ApiError, errorMessage } from '@/lib/api';
 import { useClearSkips } from '@/lib/explore';
 import { t, useT } from '@/lib/i18n';
@@ -166,7 +167,7 @@ function NameEditor({ currentName }: { currentName: string }) {
 
 const styles = StyleSheet.create({
   info: { gap: 8 },
-  label: { fontSize: 14, fontWeight: '600', color: colors.muted },
-  value: { fontSize: 20, color: colors.text },
+  label: { fontSize: 14, fontFamily: font.semibold, color: colors.muted },
+  value: { fontSize: 20, color: colors.text, fontFamily: font.regular },
   danger: { marginTop: 16, alignItems: 'center' },
 });

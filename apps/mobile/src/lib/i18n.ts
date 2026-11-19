@@ -14,6 +14,7 @@ const plural = (count: number, one: string, many: string) => (count === 1 ? one 
 
 const en = {
   languageName: 'English',
+  brandTagline: 'Hope for everyone. Give what you can, find what you need.',
   common: {
     cancel: 'Cancel',
     tryAgain: 'Try again',
@@ -489,6 +490,7 @@ export type Messages = typeof en;
 
 const hi: Messages = {
   languageName: 'हिन्दी',
+  brandTagline: 'सबके लिए उम्मीद। जो दे सकें, दें; जो चाहिए, पाएँ।',
   common: {
     cancel: 'रद्द करें',
     tryAgain: 'फिर से कोशिश करें',

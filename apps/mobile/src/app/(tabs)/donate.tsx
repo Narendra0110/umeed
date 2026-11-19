@@ -4,6 +4,7 @@ import { type ReactNode, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { font } from '@/components/theme';
 import { NeedForm } from '@/components/need-form';
 import {
   Body,
@@ -329,7 +330,7 @@ function LocationStatus({
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   field: { gap: 8 },
-  label: { fontSize: 14, fontWeight: '600', color: colors.text },
+  label: { fontSize: 14, fontFamily: font.semibold, color: colors.text },
   photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   photoBox: { width: 96, height: 96 },
   photo: { width: 96, height: 96, borderRadius: 10, backgroundColor: colors.surface },
@@ -339,7 +340,7 @@ const styles = StyleSheet.create({
     bottom: 4,
     backgroundColor: 'rgba(0,0,0,0.6)',
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 11, fontFamily: font.regular,
     paddingHorizontal: 6,
     borderRadius: 6,
   },
@@ -354,9 +355,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  removeText: { color: '#FFFFFF', fontSize: 18, lineHeight: 20 },
+  removeText: { color: '#FFFFFF', fontSize: 18, lineHeight: 20, fontFamily: font.regular },
   photoButtons: { flexDirection: 'row', gap: 8 },
-  error: { fontSize: 14, color: colors.error },
+  error: { fontSize: 14, color: colors.error, fontFamily: font.regular },
   locationBox: { backgroundColor: colors.warningBackground, borderRadius: 12, padding: 12, gap: 10 },
-  locationText: { color: colors.warning, fontSize: 15, lineHeight: 21 },
+  locationText: { color: colors.warning, fontSize: 15, lineHeight: 21, fontFamily: font.regular },
 });

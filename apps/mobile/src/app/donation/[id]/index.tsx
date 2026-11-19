@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
+import { font } from '@/components/theme';
 import { ClaimSheet } from '@/components/claim-sheet';
 import { PhotoCarousel } from '@/components/photos';
 import { Body, Button, colors, EmptyState, ErrorState, LinkButton, Loading, Pill, Screen } from '@/components/ui';
@@ -174,10 +175,10 @@ export default function DonationScreen() {
 
 const styles = StyleSheet.create({
   bleed: { marginHorizontal: -24, marginTop: -24 },
-  title: { fontSize: 24, fontWeight: '700', color: colors.text },
+  title: { fontSize: 24, fontFamily: font.bold, color: colors.text },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  meta: { fontSize: 15, color: colors.muted },
-  description: { fontSize: 16, lineHeight: 23, color: colors.text },
+  meta: { fontSize: 15, color: colors.muted, fontFamily: font.regular },
+  description: { fontSize: 16, lineHeight: 23, color: colors.text, fontFamily: font.regular },
   actions: { gap: 12, marginTop: 8 },
   claimedBox: {
     minHeight: 52,
@@ -187,5 +188,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
-  claimedText: { color: colors.success, fontSize: 15, fontWeight: '600', textAlign: 'center' },
+  claimedText: { color: colors.success, fontSize: 15, fontFamily: font.semibold, textAlign: 'center' },
 });

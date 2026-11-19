@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,22 +15,9 @@ import { type Edge, SafeAreaView } from 'react-native-safe-area-context';
 
 import { type Language, useLanguageStore, useT } from '@/lib/i18n';
 
-export const colors = {
-  primary: '#208AEF',
-  primaryPressed: '#1670C4',
-  primaryLight: '#E7F2FD',
-  text: '#1B1F24',
-  muted: '#5B6470',
-  border: '#CBD2DA',
-  surface: '#F4F6F8',
-  error: '#C62828',
-  errorBackground: '#FDECEA',
-  success: '#2E7D32',
-  successBackground: '#E8F5E9',
-  warning: '#9A6700',
-  warningBackground: '#FFF4D6',
-  background: '#FFFFFF',
-};
+import { colors, font, radius, shadow } from './theme';
+
+export { colors, font } from './theme';
 
 type ScreenProps = {
   children: ReactNode;
@@ -80,17 +67,26 @@ export function Loading() {
 
 type FieldProps = TextInputProps & { label: string; error?: string; prefix?: string; hint?: string };
 
-export function Field({ label, error, prefix, hint, multiline, ...inputProps }: FieldProps) {
+export function Field({ label, error, prefix, hint, multiline, onFocus, onBlur, ...inputProps }: FieldProps) {
+  const [focused, setFocused] = useState(false);
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <View style={[styles.inputRow, error ? styles.inputRowError : null]}>
+      <View style={[styles.inputRow, focused ? styles.inputRowFocused : null, error ? styles.inputRowError : null]}>
         {prefix ? <Text style={styles.prefix}>{prefix}</Text> : null}
         <TextInput
           style={[styles.input, multiline ? styles.inputMultiline : null]}
           placeholderTextColor={colors.muted}
           accessibilityLabel={label}
           multiline={multiline}
+          onFocus={(event) => {
+            setFocused(true);
+            onFocus?.(event);
+          }}
+          onBlur={(event) => {
+            setFocused(false);
+            onBlur?.(event);
+          }}
           {...inputProps}
         />
       </View>
@@ -122,6 +118,7 @@ export function Button({ title, onPress, loading, disabled, variant = 'primary' 
         primary ? styles.buttonPrimary : variant === 'danger' ? styles.buttonDanger : styles.buttonSecondary,
         pressed && primary ? styles.buttonPrimaryPressed : null,
         pressed && !primary ? styles.buttonSecondaryPressed : null,
+        pressed ? styles.buttonPressed : null,
         inactive ? styles.buttonInactive : null,
       ]}>
       {loading ? (
@@ -238,9 +235,25 @@ export function Pill({ label, tone = 'neutral' }: { label: string; tone?: PillTo
 }
 
 /** Shown when a list has nothing in it yet. */
-export function EmptyState({ title, message, action }: { title: string; message?: string; action?: ReactNode }) {
+export function EmptyState({
+  title,
+  message,
+  action,
+  emoji = '🌱',
+}: {
+  title: string;
+  message?: string;
+  action?: ReactNode;
+  /** A big friendly picture above the title. */
+  emoji?: string;
+}) {
   return (
     <View style={styles.state}>
+      <View style={styles.stateBadge}>
+        <Text style={styles.stateEmoji} accessibilityElementsHidden importantForAccessibility="no">
+          {emoji}
+        </Text>
+      </View>
       <Text style={styles.stateTitle}>{title}</Text>
       {message ? <Text style={styles.stateMessage}>{message}</Text> : null}
       {action}
@@ -261,6 +274,11 @@ export function ErrorState({
   const m = useT();
   return (
     <View style={styles.state}>
+      <View style={styles.stateBadge}>
+        <Text style={styles.stateEmoji} accessibilityElementsHidden importantForAccessibility="no">
+          😕
+        </Text>
+      </View>
       <Text style={styles.stateTitle}>{m.common.couldNotLoad}</Text>
       <Text style={styles.stateMessage}>{message}</Text>
       <Button title={m.common.tryAgain} onPress={onRetry} loading={retrying} />
@@ -294,6 +312,19 @@ export function LanguageSwitch({ onChange }: { onChange?: (language: Language) =
   );
 }
 
+/** The Umeed wordmark with its tagline, for the login screen. */
+export function Brand() {
+  const m = useT();
+  return (
+    <View style={styles.brand} accessibilityRole="header">
+      <Text style={styles.brandName}>
+        Umeed <Text style={styles.brandHindi}>उम्मीद</Text>
+      </Text>
+      <Text style={styles.brandTagline}>{m.brandTagline}</Text>
+    </View>
+  );
+}
+
 export function ErrorBanner({ message }: { message?: string | null }) {
   if (!message) {
     return null;
@@ -310,60 +341,84 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { padding: 24, gap: 16 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
-  title: { fontSize: 26, fontWeight: '700', color: colors.text },
-  body: { fontSize: 16, lineHeight: 22, color: colors.muted },
+  title: { fontSize: 28, lineHeight: 36, fontFamily: font.bold, color: colors.text },
+  body: { fontSize: 16, lineHeight: 23, fontFamily: font.regular, color: colors.muted },
   field: { gap: 6 },
-  label: { fontSize: 14, fontWeight: '600', color: colors.text },
+  label: { fontSize: 15, fontFamily: font.semibold, color: colors.text },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: 12,
+    borderRadius: radius.medium,
+    backgroundColor: colors.card,
     paddingHorizontal: 14,
-    minHeight: 52,
+    minHeight: 54,
   },
+  inputRowFocused: { borderColor: colors.primary },
   inputRowError: { borderColor: colors.error },
-  prefix: { fontSize: 18, color: colors.text, marginRight: 8 },
-  input: { flex: 1, fontSize: 18, color: colors.text, paddingVertical: 12 },
-  inputMultiline: { minHeight: 96, textAlignVertical: 'top' },
-  hint: { fontSize: 13, color: colors.muted },
-  fieldError: { fontSize: 14, color: colors.error },
-  button: { minHeight: 52, borderRadius: 12, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
-  buttonPrimary: { backgroundColor: colors.primary },
+  prefix: { fontSize: 18, fontFamily: font.semibold, color: colors.text, marginRight: 8 },
+  input: { flex: 1, fontSize: 18, fontFamily: font.regular, color: colors.text, paddingVertical: 10 },
+  inputMultiline: { minHeight: 100, textAlignVertical: 'top' },
+  hint: { fontSize: 13, fontFamily: font.regular, color: colors.muted },
+  fieldError: { fontSize: 14, fontFamily: font.medium, color: colors.error },
+  button: {
+    minHeight: 54,
+    borderRadius: radius.medium,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  buttonPrimary: { backgroundColor: colors.primary, ...shadow },
   buttonPrimaryPressed: { backgroundColor: colors.primaryPressed },
-  buttonSecondary: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border },
+  buttonSecondary: { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.border },
   buttonSecondaryPressed: { backgroundColor: colors.surface },
-  buttonDanger: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.error },
-  buttonInactive: { opacity: 0.6 },
-  buttonPrimaryText: { color: '#FFFFFF', fontSize: 17, fontWeight: '600' },
-  buttonSecondaryText: { color: colors.text, fontSize: 17, fontWeight: '600' },
-  buttonDangerText: { color: colors.error, fontSize: 17, fontWeight: '600' },
+  buttonDanger: { backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.error },
+  buttonPressed: { transform: [{ scale: 0.98 }] },
+  buttonInactive: { opacity: 0.55 },
+  buttonPrimaryText: { color: '#FFFFFF', fontSize: 17, fontFamily: font.bold },
+  buttonSecondaryText: { color: colors.text, fontSize: 17, fontFamily: font.semibold },
+  buttonDangerText: { color: colors.error, fontSize: 17, fontFamily: font.semibold },
   linkButton: { paddingVertical: 4 },
-  linkButtonText: { fontSize: 15, fontWeight: '600' },
+  linkButtonText: { fontSize: 15, fontFamily: font.semibold },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    borderRadius: radius.pill,
+    backgroundColor: colors.card,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
     minHeight: 40,
     justifyContent: 'center',
   },
   chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 15, color: colors.text },
-  chipTextSelected: { color: '#FFFFFF', fontWeight: '600' },
-  segmented: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 12, padding: 4 },
-  segment: { flex: 1, minHeight: 40, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
-  segmentSelected: { backgroundColor: colors.background, elevation: 1 },
-  segmentText: { fontSize: 15, color: colors.muted, fontWeight: '600' },
-  segmentTextSelected: { color: colors.text },
-  pill: { alignSelf: 'flex-start', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 3 },
-  pillText: { fontSize: 13, fontWeight: '600' },
+  chipText: { fontSize: 15, fontFamily: font.medium, color: colors.text },
+  chipTextSelected: { color: '#FFFFFF', fontFamily: font.semibold },
+  segmented: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: radius.medium, padding: 4 },
+  segment: { flex: 1, minHeight: 42, borderRadius: radius.small, alignItems: 'center', justifyContent: 'center' },
+  segmentSelected: { backgroundColor: colors.card, ...shadow },
+  segmentText: { fontSize: 15, color: colors.muted, fontFamily: font.semibold },
+  segmentTextSelected: { color: colors.primary, fontFamily: font.bold },
+  pill: { alignSelf: 'flex-start', borderRadius: radius.pill, paddingHorizontal: 12, paddingVertical: 2 },
+  pillText: { fontSize: 13, fontFamily: font.semibold },
   state: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, padding: 24 },
-  stateTitle: { fontSize: 20, fontWeight: '700', color: colors.text, textAlign: 'center' },
-  stateMessage: { fontSize: 16, lineHeight: 22, color: colors.muted, textAlign: 'center' },
-  banner: { backgroundColor: colors.errorBackground, borderRadius: 12, padding: 12 },
-  bannerText: { color: colors.error, fontSize: 15 },
+  stateBadge: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  stateEmoji: { fontSize: 42 },
+  stateTitle: { fontSize: 21, lineHeight: 28, fontFamily: font.bold, color: colors.text, textAlign: 'center' },
+  stateMessage: { fontSize: 16, lineHeight: 23, fontFamily: font.regular, color: colors.muted, textAlign: 'center' },
+  brand: { alignItems: 'flex-start', gap: 0 },
+  brandName: { fontSize: 40, lineHeight: 50, fontFamily: font.extraBold, color: colors.primary },
+  brandHindi: { fontSize: 28, fontFamily: font.bold, color: colors.accent },
+  brandTagline: { fontSize: 16, fontFamily: font.medium, color: colors.muted, marginTop: -4 },
+  banner: { backgroundColor: colors.errorBackground, borderRadius: radius.medium, padding: 12 },
+  bannerText: { color: colors.error, fontSize: 15, fontFamily: font.medium },
 });

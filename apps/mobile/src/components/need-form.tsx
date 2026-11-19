@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
+import { font } from '@/components/theme';
 import { Body, Button, ChoiceChips, colors, ErrorBanner, Field, Loading, Screen, Title } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
 import { useCategories } from '@/lib/donations';
@@ -159,5 +160,5 @@ export function NeedForm({ header }: { header: ReactNode }) {
 
 const styles = StyleSheet.create({
   locationBox: { backgroundColor: colors.warningBackground, borderRadius: 12, padding: 12, gap: 10 },
-  locationText: { color: colors.warning, fontSize: 15, lineHeight: 21 },
+  locationText: { color: colors.warning, fontSize: 15, lineHeight: 21, fontFamily: font.regular },
 });

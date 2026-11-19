@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { font } from '@/components/theme';
 import { colors } from '@/components/ui';
 import { usePushBanner } from '@/lib/push';
 
@@ -62,6 +63,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
   },
-  title: { color: colors.background, fontSize: 15, fontWeight: '700' },
-  body: { color: colors.background, fontSize: 14 },
+  title: { color: colors.background, fontSize: 15, fontFamily: font.bold },
+  body: { color: colors.background, fontSize: 14, fontFamily: font.regular },
 });

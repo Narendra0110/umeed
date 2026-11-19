@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
+import { font } from '@/components/theme';
 import { ListRow } from '@/components/list-row';
 import { Body, Button, colors, EmptyState, ErrorState, LinkButton, Loading, Pill, Screen } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
@@ -203,13 +204,13 @@ function MyNeedOffers({ need, offers, loading, error, onRetry, choosing, onChoos
 }
 
 const styles = StyleSheet.create({
-  title: { fontSize: 24, fontWeight: '700', color: colors.text },
+  title: { fontSize: 24, fontFamily: font.bold, color: colors.text },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  meta: { fontSize: 15, color: colors.muted },
-  description: { fontSize: 16, lineHeight: 23, color: colors.text },
+  meta: { fontSize: 15, color: colors.muted, fontFamily: font.regular },
+  description: { fontSize: 16, lineHeight: 23, color: colors.text, fontFamily: font.regular },
   actions: { gap: 12, marginTop: 8 },
   offers: { gap: 10, marginTop: 8 },
-  section: { fontSize: 15, fontWeight: '700', color: colors.muted, textTransform: 'uppercase' },
+  section: { fontSize: 15, fontFamily: font.bold, color: colors.muted, textTransform: 'uppercase' },
   flex: { flex: 1 },
   links: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginTop: 8 },
 });

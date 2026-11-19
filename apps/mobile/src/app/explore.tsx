@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
+import { font } from '@/components/theme';
 import { ListRow } from '@/components/list-row';
 import { Button, ChoiceChips, colors, EmptyState, ErrorState, Field, Loading, Segmented } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
@@ -209,7 +210,7 @@ const styles = StyleSheet.create({
   controls: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, gap: 10 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   filters: { gap: 10 },
-  hint: { fontSize: 14, color: colors.muted },
+  hint: { fontSize: 14, color: colors.muted, fontFamily: font.regular },
   list: { padding: 16, gap: 10, flexGrow: 1 },
   mapNotice: {
     position: 'absolute',
@@ -221,5 +222,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     elevation: 3,
   },
-  mapNoticeText: { textAlign: 'center', color: colors.muted, fontSize: 14 },
+  mapNoticeText: { textAlign: 'center', color: colors.muted, fontSize: 14, fontFamily: font.regular },
 });

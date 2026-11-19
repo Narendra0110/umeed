@@ -3,6 +3,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { font } from '@/components/theme';
 import { Body, Button, colors, ErrorBanner, Field } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
 import { useCreateClaim } from '@/lib/claims';
@@ -96,5 +97,5 @@ const styles = StyleSheet.create({
     gap: 14,
   },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: colors.border },
-  title: { fontSize: 22, fontWeight: '700', color: colors.text },
+  title: { fontSize: 22, fontFamily: font.bold, color: colors.text },
 });

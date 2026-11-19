@@ -1,7 +1,18 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  Baloo2_400Regular,
+  Baloo2_500Medium,
+  Baloo2_600SemiBold,
+  Baloo2_700Bold,
+  Baloo2_800ExtraBold,
+  useFonts,
+} from '@expo-google-fonts/baloo-2';
 import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+
+import { colors, font } from '@/components/theme';
 
 import { PushBanner } from '@/components/push-banner';
 import { ApiError } from '@/lib/api';
@@ -15,16 +26,44 @@ function shouldRetry(failureCount: number, error: unknown) {
   return failureCount < 2;
 }
 
+// Keep the splash screen up until the fonts are ready, so text never jumps from one font to another.
+void SplashScreen.preventAutoHideAsync().catch(() => undefined);
+
 export default function RootLayout() {
   const s = useT().screens;
   const [queryClient] = useState(
     () => new QueryClient({ defaultOptions: { queries: { retry: shouldRetry } } }),
   );
+  const [fontsLoaded, fontError] = useFonts({
+    Baloo2_400Regular,
+    Baloo2_500Medium,
+    Baloo2_600SemiBold,
+    Baloo2_700Bold,
+    Baloo2_800ExtraBold,
+  });
+  const ready = fontsLoaded || !!fontError;
+
+  useEffect(() => {
+    if (ready) {
+      void SplashScreen.hideAsync().catch(() => undefined);
+    }
+  }, [ready]);
+
+  if (!ready) {
+    return null;
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShadowVisible: false }}>
+      <Stack
+        screenOptions={{
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: colors.background },
+          headerTintColor: colors.primary,
+          headerTitleStyle: { fontFamily: font.bold, color: colors.text },
+          contentStyle: { backgroundColor: colors.background },
+        }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ title: s.login }} />
         <Stack.Screen name="verify" options={{ title: s.verify }} />

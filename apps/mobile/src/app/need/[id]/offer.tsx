@@ -3,6 +3,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { font } from '@/components/theme';
 import { AuthImage } from '@/components/photos';
 import { Body, Button, colors, EmptyState, ErrorBanner, ErrorState, Field, Loading, Screen, Title } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
@@ -129,6 +130,6 @@ const styles = StyleSheet.create({
   },
   itemSelected: { borderColor: colors.primary, borderWidth: 2, backgroundColor: colors.primaryLight },
   thumb: { width: 56, height: 56, borderRadius: 8 },
-  itemTitle: { flex: 1, fontSize: 16, color: colors.text },
-  error: { fontSize: 14, color: colors.error },
+  itemTitle: { flex: 1, fontSize: 16, color: colors.text, fontFamily: font.regular },
+  error: { fontSize: 14, color: colors.error, fontFamily: font.regular },
 });

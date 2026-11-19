@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { AuthImage } from '@/components/photos';
+import { font, radius, shadow } from '@/components/theme';
 import { colors } from '@/components/ui';
 
 type ListRowProps = {
@@ -56,17 +57,17 @@ const styles = StyleSheet.create({
   card: {
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 14,
-    backgroundColor: colors.background,
-    overflow: 'hidden',
+    borderRadius: radius.large,
+    backgroundColor: colors.card,
+    ...shadow,
   },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: radius.large },
   pressed: { backgroundColor: colors.surface },
-  thumb: { width: 64, height: 64, borderRadius: 10 },
+  thumb: { width: 68, height: 68, borderRadius: radius.medium },
   text: { flex: 1, gap: 4 },
-  title: { fontSize: 16, fontWeight: '600', color: colors.text },
-  subtitle: { fontSize: 14, color: colors.muted, lineHeight: 19 },
-  chevron: { fontSize: 26, color: colors.muted },
+  title: { fontSize: 16, fontFamily: font.semibold, color: colors.text },
+  subtitle: { fontSize: 14, color: colors.muted, lineHeight: 21, fontFamily: font.regular },
+  chevron: { fontSize: 26, color: colors.muted, fontFamily: font.regular },
   actions: { flexDirection: 'row', gap: 8, paddingHorizontal: 12, paddingBottom: 12 },
-  section: { fontSize: 15, fontWeight: '700', color: colors.muted, marginTop: 8, textTransform: 'uppercase' },
+  section: { fontSize: 15, fontFamily: font.bold, color: colors.muted, marginTop: 8, textTransform: 'uppercase' },
 });

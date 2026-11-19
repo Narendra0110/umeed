@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { font } from '@/components/theme';
 import { ClaimSheet } from '@/components/claim-sheet';
 import { NeedsList } from '@/components/needs-list';
 import { PhotoCarousel } from '@/components/photos';
@@ -215,7 +216,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: 12,
   },
-  brand: { fontSize: 24, fontWeight: '800', color: colors.primary },
+  brand: { fontSize: 24, fontFamily: font.extraBold, color: colors.primary },
   searchButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -224,16 +225,16 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   searchPressed: { backgroundColor: colors.surface },
-  searchText: { fontSize: 14, color: colors.text },
+  searchText: { fontSize: 14, color: colors.text, fontFamily: font.regular },
   switch: { paddingHorizontal: 16, paddingBottom: 8 },
-  locationHint: { flexShrink: 1, fontSize: 13, color: colors.muted, textAlign: 'right' },
+  locationHint: { flexShrink: 1, fontSize: 13, color: colors.muted, textAlign: 'right', fontFamily: font.regular },
   footer: { padding: 24 },
   post: { backgroundColor: colors.background },
   details: { flex: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, gap: 6 },
-  title: { fontSize: 22, fontWeight: '700', color: colors.text },
+  title: { fontSize: 22, fontFamily: font.bold, color: colors.text },
   metaRow: { flexDirection: 'row', gap: 8 },
-  meta: { fontSize: 15, color: colors.muted },
-  description: { fontSize: 15, color: colors.text, lineHeight: 21 },
+  meta: { fontSize: 15, color: colors.muted, fontFamily: font.regular },
+  description: { fontSize: 15, color: colors.text, lineHeight: 21, fontFamily: font.regular },
   spacer: { flex: 1 },
   notice: {
     marginHorizontal: 16,
@@ -243,8 +244,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: colors.successBackground,
   },
-  noticeText: { color: colors.success, fontSize: 15, fontWeight: '600', textAlign: 'center' },
+  noticeText: { color: colors.success, fontSize: 15, fontFamily: font.semibold, textAlign: 'center' },
   bottomRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 32 },
-  swipeHint: { fontSize: 13, color: colors.muted, flexShrink: 1 },
+  swipeHint: { fontSize: 13, color: colors.muted, flexShrink: 1, fontFamily: font.regular },
   links: { flexDirection: 'row', gap: 16 },
 });

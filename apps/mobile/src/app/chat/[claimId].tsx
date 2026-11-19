@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { font } from '@/components/theme';
 import { colors, EmptyState, ErrorState, Loading, Screen } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
 import { useChatThread, useMarkChatRead, useSendMessage } from '@/lib/chat';
@@ -144,13 +145,13 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   list: { padding: 12, gap: 8, flexGrow: 1 },
   empty: { flex: 1, justifyContent: 'center', padding: 24, transform: [{ scaleY: -1 }] },
-  emptyText: { textAlign: 'center', color: colors.muted, fontSize: 15, lineHeight: 21 },
+  emptyText: { textAlign: 'center', color: colors.muted, fontSize: 15, lineHeight: 21, fontFamily: font.regular },
   bubble: { maxWidth: '80%', borderRadius: 16, paddingHorizontal: 12, paddingVertical: 8, gap: 2 },
   mine: { alignSelf: 'flex-end', backgroundColor: colors.primary },
   theirs: { alignSelf: 'flex-start', backgroundColor: colors.surface },
-  body: { fontSize: 16, lineHeight: 22, color: colors.text },
+  body: { fontSize: 16, lineHeight: 22, color: colors.text, fontFamily: font.regular },
   mineText: { color: colors.background },
-  time: { fontSize: 11, color: colors.muted, alignSelf: 'flex-end' },
+  time: { fontSize: 11, color: colors.muted, alignSelf: 'flex-end', fontFamily: font.regular },
   mineTime: { color: colors.primaryLight },
   composer: {
     flexDirection: 'row',
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    fontSize: 16,
+    fontSize: 16, fontFamily: font.regular,
     color: colors.text,
   },
   send: {
@@ -185,7 +186,7 @@ const styles = StyleSheet.create({
   },
   sendDisabled: { opacity: 0.4 },
   sendPressed: { backgroundColor: colors.primaryPressed },
-  sendText: { color: colors.background, fontSize: 16, fontWeight: '600' },
+  sendText: { color: colors.background, fontSize: 16, fontFamily: font.semibold },
   closed: { padding: 12, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
-  closedText: { textAlign: 'center', color: colors.muted, fontSize: 14 },
+  closedText: { textAlign: 'center', color: colors.muted, fontSize: 14, fontFamily: font.regular },
 });

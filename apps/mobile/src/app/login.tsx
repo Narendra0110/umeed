@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import type { z } from 'zod';
 
-import { Body, Button, ErrorBanner, Field, LanguageSwitch, Screen, Title } from '@/components/ui';
+import { Body, Brand, Button, ErrorBanner, Field, LanguageSwitch, Screen, Title } from '@/components/ui';
 import { firebaseErrorMessage } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { useLoginStore } from '@/lib/login-store';
@@ -40,6 +40,7 @@ export default function LoginScreen() {
   return (
     <Screen scroll>
       <LanguageSwitch />
+      <Brand />
       <Title>{m.login.title}</Title>
       <Body>{m.login.intro}</Body>
       <Controller

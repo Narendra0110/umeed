@@ -7,6 +7,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import type { z } from 'zod';
 
+import { font } from '@/components/theme';
 import { Body, Button, colors, ErrorBanner, Field, Screen, Title } from '@/components/ui';
 import { deleteAccountEverywhere, signedInSince } from '@/lib/account';
 import { errorMessage } from '@/lib/api';
@@ -163,5 +164,5 @@ export default function DeleteAccountScreen() {
 
 const styles = StyleSheet.create({
   list: { gap: 6 },
-  point: { fontSize: 15, lineHeight: 22, color: colors.text },
+  point: { fontSize: 15, lineHeight: 22, color: colors.text, fontFamily: font.regular },
 });

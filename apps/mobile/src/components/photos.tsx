@@ -2,6 +2,7 @@ import { Image, type ImageStyle } from 'expo-image';
 import { useState } from 'react';
 import { FlatList, type StyleProp, StyleSheet, Text, View } from 'react-native';
 
+import { font } from '@/components/theme';
 import { colors } from '@/components/ui';
 import { fileUrl } from '@/lib/api';
 import { useT } from '@/lib/i18n';
@@ -92,5 +93,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
-  counterText: { color: '#FFFFFF', fontSize: 13, fontWeight: '600' },
+  counterText: { color: '#FFFFFF', fontSize: 13, fontFamily: font.semibold },
 });

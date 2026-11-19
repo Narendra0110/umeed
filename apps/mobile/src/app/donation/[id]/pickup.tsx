@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 
+import { font } from '@/components/theme';
 import { Body, Button, colors, EmptyState, ErrorState, Loading, Pill, Screen, Title } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
 import { pickupRole, useCancelPickup, useConfirmPickup, usePickup } from '@/lib/pickup';
@@ -175,11 +176,11 @@ function ConfirmLine({ label, confirmed }: { label: string; confirmed: boolean }
 
 const styles = StyleSheet.create({
   card: { borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 16, gap: 8 },
-  cardLabel: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase' },
-  address: { fontSize: 17, lineHeight: 24, color: colors.text },
-  name: { fontSize: 18, fontWeight: '600', color: colors.text },
-  phone: { fontSize: 17, color: colors.text },
+  cardLabel: { fontSize: 13, fontFamily: font.bold, color: colors.muted, textTransform: 'uppercase' },
+  address: { fontSize: 17, lineHeight: 24, color: colors.text, fontFamily: font.regular },
+  name: { fontSize: 18, fontFamily: font.semibold, color: colors.text },
+  phone: { fontSize: 17, color: colors.text, fontFamily: font.regular },
   confirmLine: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  confirmLabel: { flexShrink: 1, fontSize: 15, color: colors.text },
+  confirmLabel: { flexShrink: 1, fontSize: 15, color: colors.text, fontFamily: font.regular },
   actions: { gap: 12 },
 });
