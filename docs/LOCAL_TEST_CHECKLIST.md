@@ -9,6 +9,27 @@ Sign-in method → Phone → Phone numbers for testing). Call the accounts **Ash
 
 ---
 
+## Round 1 – one phone (do this first)
+
+With one phone, Asha and Dev take turns on the same phone: **log out, then log in with the other test
+number** (Profile → Log out). Everything is tested except what needs both people at once: notifications
+arriving on the other person's phone, and live chat. Those wait for Round 2 with two devices.
+Set up with S1, S3–S5 and S7 for one device (S2, S6, S8–S10 can wait).
+
+| Turn | Who | Tests (details in the parts below) |
+|------|-----|-------------------------------------|
+| 1 | Asha (Hindi) | T1.1, T1.2, T1.4, T1.6. Then Log out. |
+| 2 | Dev (English) | T1.3. T2.1: post **four** items – "School bag", "Table lamp", "Winter jacket", "Old chair". T2.2. Then remove "Old chair" (T2.10). Log out. |
+| 3 | Asha | T1.5 (comes back in Hindi). T2.3. T2.4: claim "School bag" and "Table lamp". T6.1, T6.2, T6.3 ("Not interested" on "Winter jacket"), T6.5. T5.1: report "Winter jacket". T4.1: ask for "School shoes, size 5". Log out. |
+| 4 | Dev | Post a fifth item "Shoes size 5". Item "School bag" → See claims → choose Asha (T2.6). Pickup screen → Message Asha → "Hello" (T3.1). Home → Needs → Asha's need → Offer an item → "Shoes size 5" (T4.2). T4.6: report Asha's need, then try again (the second time is refused). Log out. |
+| 5 | Asha | Activity → My claims → "School bag" → pickup details: address and Dev's number (T2.7, without the notification). The Chats tab shows 1 unread; open it, read "Hello", reply (T3.2/T3.3 without the notification). Activity → Needs → "School shoes" → choose Dev's offer (T4.3). On "School bag" tap "I have received it" (T2.8, first half). T8.1: report "Winter jacket" again – the refusal is in Hindi. Log out. |
+| 6 | Dev | "School bag" pickup → "I have handed it over" → "Given away – thank you!" (T2.8). Its chat now says it is closed (T3.4). "Shoes size 5" pickup → Cancel reservation (T2.9, without the notification). Log out. |
+| 7 | Asha | "Shoes size 5" no longer shows a pickup for Asha. T5.2: block Dev (the open "Table lamp" claim closes; Dev's items vanish from Home and Search). T5.3: unblock (items back; the closed claim stays closed). |
+
+Write down anything odd: wrong or English text in Hindi mode, cut-off text, slow screens, crashes.
+
+---
+
 ## Part 0 – Set up (once)
 
 | # | Step | Done when |
