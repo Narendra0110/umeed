@@ -1,14 +1,19 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInUp, FadeOut } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { font } from '@/components/theme';
+
 import { ClaimSheet } from '@/components/claim-sheet';
 import { NeedsList } from '@/components/needs-list';
 import { PhotoCarousel } from '@/components/photos';
-import { Button, colors, EmptyState, ErrorState, LinkButton, Loading, Pill, Segmented } from '@/components/ui';
+import { CardSkeleton } from '@/components/skeleton';
+import { font } from '@/components/theme';
+import { Button, colors, EmptyState, ErrorState, LinkButton, Segmented } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
+import { celebrate } from '@/lib/delight';
 import { useFeed } from '@/lib/donations';
 import { useSkipDonation } from '@/lib/explore';
 import { conditionLabel, type Coordinates, distanceKm, formatDistance } from '@/lib/format';
@@ -50,7 +55,7 @@ export default function FeedScreen() {
 
   let content;
   if (location.isPending || feed.isPending) {
-    content = <Loading />;
+    content = <CardSkeleton />;
   } else if (feed.isError) {
     content = (
       <ErrorState message={errorMessage(feed.error)} onRetry={() => feed.refetch()} retrying={feed.isFetching} />
@@ -58,6 +63,7 @@ export default function FeedScreen() {
   } else if (items.length === 0) {
     content = (
       <EmptyState
+        emoji="🎁"
         title={m.feed.emptyTitle}
         message={m.feed.emptyMessage}
         action={<Button title={m.feed.donateAnItem} onPress={() => router.navigate('/donate')} />}
@@ -130,9 +136,9 @@ export default function FeedScreen() {
         />
       </View>
       {notice ? (
-        <View style={styles.notice} accessibilityRole="alert" accessibilityLiveRegion="polite">
+        <Animated.View entering={FadeInUp.duration(250)} exiting={FadeOut.duration(200)} style={styles.notice} accessibilityRole="alert" accessibilityLiveRegion="polite">
           <Text style={styles.noticeText}>{notice}</Text>
-        </View>
+        </Animated.View>
       ) : null}
       {view === 'items' ? content : <NeedsList near={coords} locationReady={!location.isPending} />}
       {claiming ? (
@@ -143,6 +149,7 @@ export default function FeedScreen() {
           donorName={claiming.donorName}
           onClose={() => setClaiming(null)}
           onClaimed={() => {
+            celebrate(m.celebrate.claimSent);
             setNotice(m.feed.claimedNotice(claiming.title));
             setClaiming(null);
           }}
@@ -163,27 +170,33 @@ type FeedPostProps = {
 function FeedPost({ donation, height, near, onClaim, onSkip }: FeedPostProps) {
   const m = useT();
   const [width, setWidth] = useState(0);
-  const photoHeight = Math.round(height * 0.58);
-  const place = `${donation.area}, ${donation.city}`;
-  const distance = near ? ` · ${formatDistance(distanceKm(near, donation))}` : '';
+  const photoWidth = Math.max(width - 32, 0);
+  const photoHeight = Math.round(height * 0.56);
 
   return (
     <View style={[styles.post, { height }]} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
-      <PhotoCarousel paths={donation.imageUrls} width={width} height={photoHeight} title={donation.title} />
+      <View style={[styles.photoCard, { height: photoHeight }]}>
+        <PhotoCarousel paths={donation.imageUrls} width={photoWidth} height={photoHeight} title={donation.title} />
+        {/* A soft dark fade so the white title stays readable on any photo. */}
+        <LinearGradient
+          colors={['transparent', 'rgba(20,12,4,0.78)']}
+          style={styles.fade}
+          pointerEvents="box-none">
+          <View style={styles.chips} pointerEvents="none">
+            <Text style={styles.chip}>{conditionLabel(donation.itemCondition)}</Text>
+            {near ? <Text style={styles.chip}>📍 {formatDistance(distanceKm(near, donation))}</Text> : null}
+          </View>
+          <Pressable onPress={() => router.push(`/donation/${donation.id}`)} accessibilityRole="button">
+            <Text style={styles.photoTitle} numberOfLines={2}>
+              {donation.title}
+            </Text>
+          </Pressable>
+        </LinearGradient>
+      </View>
       <View style={styles.details}>
-        <Pressable onPress={() => router.push(`/donation/${donation.id}`)} accessibilityRole="button">
-          <Text style={styles.title} numberOfLines={2}>
-            {donation.title}
-          </Text>
-        </Pressable>
-        <View style={styles.metaRow}>
-          <Pill label={conditionLabel(donation.itemCondition)} tone="info" />
-        </View>
         <Text style={styles.meta} numberOfLines={1}>
-          {place}
-          {distance}
+          {donation.area}, {donation.city} · {m.feed.givenBy(donation.donorName)}
         </Text>
-        <Text style={styles.meta}>{m.feed.givenBy(donation.donorName)}</Text>
         <Text style={styles.description} numberOfLines={3}>
           {donation.description}
         </Text>
@@ -229,10 +242,22 @@ const styles = StyleSheet.create({
   switch: { paddingHorizontal: 16, paddingBottom: 8 },
   locationHint: { flexShrink: 1, fontSize: 13, color: colors.muted, textAlign: 'right', fontFamily: font.regular },
   footer: { padding: 24 },
-  post: { backgroundColor: colors.background },
+  post: { backgroundColor: colors.background, paddingTop: 4 },
+  photoCard: { marginHorizontal: 16, borderRadius: 24, overflow: 'hidden', backgroundColor: colors.surface },
+  fade: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 48, paddingBottom: 14, gap: 6 },
+  chips: { flexDirection: 'row', gap: 6 },
+  chip: {
+    overflow: 'hidden',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 1,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    color: colors.text,
+    fontSize: 13,
+    fontFamily: font.semibold,
+  },
+  photoTitle: { fontSize: 24, lineHeight: 31, fontFamily: font.bold, color: '#FFFFFF' },
   details: { flex: 1, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, gap: 6 },
-  title: { fontSize: 22, fontFamily: font.bold, color: colors.text },
-  metaRow: { flexDirection: 'row', gap: 8 },
   meta: { fontSize: 15, color: colors.muted, fontFamily: font.regular },
   description: { fontSize: 15, color: colors.text, lineHeight: 21, fontFamily: font.regular },
   spacer: { flex: 1 },

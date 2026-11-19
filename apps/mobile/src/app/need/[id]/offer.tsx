@@ -8,6 +8,7 @@ import { AuthImage } from '@/components/photos';
 import { Body, Button, colors, EmptyState, ErrorBanner, ErrorState, Field, Loading, Screen, Title } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { useMyDonations } from '@/lib/donations';
+import { celebrate } from '@/lib/delight';
 import { useT } from '@/lib/i18n';
 import { offerableItems, useMakeOffer, useNeed } from '@/lib/needs';
 import { offerSchema, type OfferFormValues } from '@/lib/schemas';
@@ -60,7 +61,7 @@ export default function OfferScreen() {
   const onSubmit = handleSubmit((values) =>
     offer.mutate(values, {
       onSuccess: () => {
-        Alert.alert(m.offer.sentTitle, m.offer.sentMessage(need.data.requesterName));
+        celebrate(m.celebrate.offerSent);
         router.back();
       },
     }),

@@ -12,9 +12,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 
-import { colors, font } from '@/components/theme';
-
+import { Celebration } from '@/components/celebration';
 import { PushBanner } from '@/components/push-banner';
+import { colors, font } from '@/components/theme';
 import { ApiError } from '@/lib/api';
 import { useT } from '@/lib/i18n';
 
@@ -65,6 +65,7 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: colors.background },
         }}>
         <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ title: s.login }} />
         <Stack.Screen name="verify" options={{ title: s.verify }} />
         <Stack.Screen name="profile-setup" options={{ title: s.profileSetup, headerBackVisible: false }} />
@@ -82,6 +83,7 @@ export default function RootLayout() {
         <Stack.Screen name="delete-account" options={{ title: s.deleteAccount }} />
       </Stack>
       <PushBanner />
+      <Celebration />
     </QueryClientProvider>
   );
 }

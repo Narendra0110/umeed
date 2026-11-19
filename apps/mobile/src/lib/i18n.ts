@@ -15,6 +15,26 @@ const plural = (count: number, one: string, many: string) => (count === 1 ? one 
 const en = {
   languageName: 'English',
   brandTagline: 'Hope for everyone. Give what you can, find what you need.',
+  welcome: {
+    giveTitle: 'Give what you no longer need',
+    giveText: 'Post a photo of something useful. People near you can ask for it, and you choose who gets it.',
+    askTitle: 'Ask for what you need',
+    askText: 'Tell people nearby what you are looking for. Donors can offer one of their items.',
+    meetTitle: 'Meet and hand over, always free',
+    meetText: 'Chat, agree on a time and place, and confirm the handover. Never pay or ask for money.',
+    next: 'Next',
+    skip: 'Skip',
+    start: 'Get started',
+  },
+  celebrate: {
+    posted: 'Your item is live!',
+    needPosted: 'Your need is posted!',
+    claimSent: 'Claim sent!',
+    chosen: 'Given! Arrange the pickup.',
+    confirmed: 'Confirmed!',
+    completed: 'Handed over. Thank you!',
+    offerSent: 'Offer sent!',
+  },
   common: {
     cancel: 'Cancel',
     tryAgain: 'Try again',
@@ -491,6 +511,26 @@ export type Messages = typeof en;
 const hi: Messages = {
   languageName: 'हिन्दी',
   brandTagline: 'सबके लिए उम्मीद। जो दे सकें, दें; जो चाहिए, पाएँ।',
+  welcome: {
+    giveTitle: 'जो काम का नहीं, उसे दें',
+    giveText: 'किसी काम की चीज़ की फ़ोटो पोस्ट करें। आसपास के लोग उसे माँग सकते हैं, और आप चुनते हैं कि किसे मिले।',
+    askTitle: 'जो चाहिए, उसे माँगें',
+    askText: 'आसपास के लोगों को बताएँ कि आपको क्या चाहिए। दानदाता अपना कोई सामान ऑफ़र कर सकते हैं।',
+    meetTitle: 'मिलें और सौंपें, हमेशा मुफ़्त',
+    meetText: 'चैट करें, समय और जगह तय करें, और सामान सौंपने की पुष्टि करें। कभी पैसे न दें, न माँगें।',
+    next: 'आगे',
+    skip: 'छोड़ें',
+    start: 'शुरू करें',
+  },
+  celebrate: {
+    posted: 'आपका सामान पोस्ट हो गया!',
+    needPosted: 'आपकी ज़रूरत पोस्ट हो गई!',
+    claimSent: 'क्लेम भेज दिया!',
+    chosen: 'दे दिया! अब पिकअप तय करें।',
+    confirmed: 'पुष्टि हो गई!',
+    completed: 'सामान सौंप दिया। धन्यवाद!',
+    offerSent: 'ऑफ़र भेज दिया!',
+  },
   common: {
     cancel: 'रद्द करें',
     tryAgain: 'फिर से कोशिश करें',

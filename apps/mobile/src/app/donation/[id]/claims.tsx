@@ -6,6 +6,7 @@ import { Body, Button, colors, EmptyState, ErrorState, LinkButton, Loading, Pill
 import { errorMessage } from '@/lib/api';
 import { confirmBlock, useBlockUser } from '@/lib/blocks';
 import { useAcceptClaim, useDonationClaims } from '@/lib/claims';
+import { celebrate } from '@/lib/delight';
 import { useDonation } from '@/lib/donations';
 import { timeAgo } from '@/lib/format';
 import { useT } from '@/lib/i18n';
@@ -49,7 +50,10 @@ export default function DonationClaimsScreen() {
           text: m.claims.choose,
           onPress: () =>
             accept.mutate(claim.id, {
-              onSuccess: () => router.replace(`/donation/${id}/pickup`),
+              onSuccess: () => {
+                celebrate(m.celebrate.chosen);
+                router.replace(`/donation/${id}/pickup`);
+              },
               onError: (error) => Alert.alert(m.claims.couldNotChoose, errorMessage(error)),
             }),
         },

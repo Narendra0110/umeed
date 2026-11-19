@@ -3,7 +3,8 @@ import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ListRow } from '@/components/list-row';
-import { colors, EmptyState, ErrorState, Loading, Pill, Title } from '@/components/ui';
+import { ListSkeleton } from '@/components/skeleton';
+import { colors, EmptyState, ErrorState, Pill, Title } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { useConversations } from '@/lib/chat';
 import { timeAgo } from '@/lib/format';
@@ -21,7 +22,7 @@ export default function ChatsScreen() {
         <Title>{m.chats.title}</Title>
       </View>
       {conversations.isPending ? (
-        <Loading />
+        <ListSkeleton />
       ) : conversations.isError ? (
         <ErrorState
           message={errorMessage(conversations.error)}
@@ -38,6 +39,7 @@ export default function ChatsScreen() {
           }
           ListEmptyComponent={
             <EmptyState
+              emoji="💬"
               title={m.chats.emptyTitle}
               message={m.chats.emptyMessage}
             />

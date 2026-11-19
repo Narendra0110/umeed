@@ -1,7 +1,8 @@
 import { Alert, FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
 import { ListRow } from '@/components/list-row';
-import { Button, colors, EmptyState, ErrorState, Loading } from '@/components/ui';
+import { ListSkeleton } from '@/components/skeleton';
+import { Button, colors, EmptyState, ErrorState } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { type BlockedUser, useBlockedUsers, useUnblockUser } from '@/lib/blocks';
 import { timeAgo } from '@/lib/format';
@@ -14,7 +15,7 @@ export default function BlockedPeopleScreen() {
   const unblock = useUnblockUser();
 
   if (blocked.isPending) {
-    return <Loading />;
+    return <ListSkeleton />;
   }
   if (blocked.isError) {
     return (
@@ -41,7 +42,7 @@ export default function BlockedPeopleScreen() {
       style={styles.screen}
       contentContainerStyle={styles.list}
       refreshControl={<RefreshControl refreshing={blocked.isRefetching} onRefresh={() => void blocked.refetch()} />}
-      ListEmptyComponent={<EmptyState title={m.blocks.emptyTitle} message={m.blocks.emptyMessage} />}
+      ListEmptyComponent={<EmptyState emoji="🕊️" title={m.blocks.emptyTitle} message={m.blocks.emptyMessage} />}
       renderItem={({ item }) => (
         <ListRow
           title={item.name}

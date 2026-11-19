@@ -1,3 +1,4 @@
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
@@ -8,6 +9,7 @@ import { PhotoCarousel } from '@/components/photos';
 import { Body, Button, colors, EmptyState, ErrorState, LinkButton, Loading, Pill, Screen } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
 import { confirmBlock, useBlockUser } from '@/lib/blocks';
+import { celebrate } from '@/lib/delight';
 import { useDonation, useRemoveDonation } from '@/lib/donations';
 import { conditionLabel, distanceKm, donationStatusLabel, formatDistance, timeAgo } from '@/lib/format';
 import { useT } from '@/lib/i18n';
@@ -47,7 +49,7 @@ export default function DonationScreen() {
     if (donation.error instanceof ApiError && donation.error.status === 404) {
       return (
         <Screen>
-          <EmptyState title={m.item.goneTitle} message={m.item.goneMessage} />
+          <EmptyState emoji="🫥" title={m.item.goneTitle} message={m.item.goneMessage} />
         </Screen>
       );
     }
@@ -84,10 +86,12 @@ export default function DonationScreen() {
     <Screen scroll>
       <View style={styles.bleed}>
         <PhotoCarousel paths={item.imageUrls} width={width} height={Math.round(width * 0.85)} title={item.title} />
+        <LinearGradient colors={['transparent', 'rgba(20,12,4,0.78)']} style={styles.fade} pointerEvents="none">
+          <Text style={styles.title} accessibilityRole="header">
+            {item.title}
+          </Text>
+        </LinearGradient>
       </View>
-      <Text style={styles.title} accessibilityRole="header">
-        {item.title}
-      </Text>
       <View style={styles.row}>
         <Pill label={conditionLabel(item.itemCondition)} tone="info" />
         {item.status !== 'AVAILABLE' ? <Pill label={donationStatusLabel(item.status)} tone="warning" /> : null}
@@ -166,6 +170,7 @@ export default function DonationScreen() {
           onClaimed={() => {
             setClaimOpen(false);
             setClaimed(true);
+            celebrate(m.celebrate.claimSent);
           }}
         />
       ) : null}
@@ -175,7 +180,8 @@ export default function DonationScreen() {
 
 const styles = StyleSheet.create({
   bleed: { marginHorizontal: -24, marginTop: -24 },
-  title: { fontSize: 24, fontFamily: font.bold, color: colors.text },
+  fade: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 24, paddingTop: 56, paddingBottom: 16 },
+  title: { fontSize: 26, lineHeight: 34, fontFamily: font.bold, color: '#FFFFFF' },
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   meta: { fontSize: 15, color: colors.muted, fontFamily: font.regular },
   description: { fontSize: 16, lineHeight: 23, color: colors.text, fontFamily: font.regular },

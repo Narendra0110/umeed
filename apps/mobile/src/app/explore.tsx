@@ -5,6 +5,7 @@ import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 import { font } from '@/components/theme';
 import { ListRow } from '@/components/list-row';
+import { ListSkeleton } from '@/components/skeleton';
 import { Button, ChoiceChips, colors, EmptyState, ErrorState, Field, Loading, Segmented } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { useCategories } from '@/lib/donations';
@@ -57,7 +58,7 @@ export default function ExploreScreen() {
 
   let results;
   if (location.isPending || search.isPending) {
-    results = <Loading />;
+    results = <ListSkeleton />;
   } else if (search.isError) {
     results = (
       <ErrorState message={errorMessage(search.error)} onRetry={() => search.refetch()} retrying={search.isFetching} />
@@ -76,6 +77,7 @@ export default function ExploreScreen() {
         ListFooterComponent={search.isFetchingNextPage ? <ActivityIndicator color={colors.primary} /> : undefined}
         ListEmptyComponent={
           <EmptyState
+            emoji="🔍"
             title={m.explore.nothingFound}
             message={m.explore.nothingFoundHint}
             action={

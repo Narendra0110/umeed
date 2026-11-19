@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { AuthImage } from '@/components/photos';
 import { font, radius, shadow } from '@/components/theme';
@@ -20,7 +21,7 @@ type ListRowProps = {
 /** One item in a list on the Activity tab or the claims screen. */
 export function ListRow({ title, subtitle, imagePath, extra, actions, onPress }: ListRowProps) {
   return (
-    <View style={styles.card}>
+    <Animated.View entering={FadeInDown.duration(220)} style={styles.card}>
       <Pressable
         onPress={onPress}
         disabled={!onPress}
@@ -41,7 +42,7 @@ export function ListRow({ title, subtitle, imagePath, extra, actions, onPress }:
         {onPress ? <Text style={styles.chevron}>›</Text> : null}
       </Pressable>
       {actions ? <View style={styles.actions}>{actions}</View> : null}
-    </View>
+    </Animated.View>
   );
 }
 

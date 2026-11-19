@@ -19,6 +19,7 @@ import {
   Title,
 } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
+import { celebrate } from '@/lib/delight';
 import { useCategories, useCreateDonation } from '@/lib/donations';
 import { categoryLabel, conditionLabel } from '@/lib/format';
 import { useT } from '@/lib/i18n';
@@ -114,7 +115,7 @@ function GiveItemForm({ header }: { header: ReactNode }) {
       {
         onSuccess: (donation) => {
           reset(emptyForm);
-          Alert.alert(m.donate.postedTitle, m.donate.postedMessage);
+          celebrate(m.celebrate.posted);
           router.push(`/donation/${donation.id}`);
         },
       },

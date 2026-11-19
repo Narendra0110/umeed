@@ -7,6 +7,7 @@ import { Alert, StyleSheet, Text, View } from 'react-native';
 import { font } from '@/components/theme';
 import { Body, Button, ChoiceChips, colors, ErrorBanner, Field, Loading, Screen, Title } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
+import { celebrate } from '@/lib/delight';
 import { useCategories } from '@/lib/donations';
 import { useCurrentLocation } from '@/lib/location';
 import { useT } from '@/lib/i18n';
@@ -41,7 +42,7 @@ export function NeedForm({ header }: { header: ReactNode }) {
       {
         onSuccess: (need) => {
           reset(emptyForm);
-          Alert.alert(m.donate.postedTitle, m.needForm.postedMessage);
+          celebrate(m.celebrate.needPosted);
           router.push(`/need/${need.id}`);
         },
       },

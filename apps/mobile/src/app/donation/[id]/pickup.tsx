@@ -5,6 +5,7 @@ import { font } from '@/components/theme';
 import { Body, Button, colors, EmptyState, ErrorState, Loading, Pill, Screen, Title } from '@/components/ui';
 import { ApiError, errorMessage } from '@/lib/api';
 import { pickupRole, useCancelPickup, useConfirmPickup, usePickup } from '@/lib/pickup';
+import { celebrate } from '@/lib/delight';
 import { useT } from '@/lib/i18n';
 import { useProfile } from '@/lib/profile';
 import type { PickupParty } from '@/lib/types';
@@ -59,7 +60,11 @@ export default function PickupScreen() {
         {
           text: m.pickup.confirm,
           onPress: () =>
-            confirm.mutate(undefined, { onError: (error) => Alert.alert(m.pickup.couldNotConfirm, errorMessage(error)) }),
+            confirm.mutate(undefined, {
+              onSuccess: (result) =>
+                celebrate(result?.status === 'COMPLETED' ? m.celebrate.completed : m.celebrate.confirmed),
+              onError: (error) => Alert.alert(m.pickup.couldNotConfirm, errorMessage(error)),
+            }),
         },
       ],
     );

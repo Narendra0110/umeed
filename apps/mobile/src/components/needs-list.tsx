@@ -2,7 +2,8 @@ import { router } from 'expo-router';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet } from 'react-native';
 
 import { ListRow } from '@/components/list-row';
-import { Button, colors, EmptyState, ErrorState, Loading } from '@/components/ui';
+import { ListSkeleton } from '@/components/skeleton';
+import { Button, colors, EmptyState, ErrorState } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { type Coordinates, distanceKm, formatDistance, timeAgo } from '@/lib/format';
 import { useT } from '@/lib/i18n';
@@ -14,7 +15,7 @@ export function NeedsList({ near, locationReady }: { near: Coordinates | null; l
   const needs = useNeedsFeed(near, locationReady);
 
   if (!locationReady || needs.isPending) {
-    return <Loading />;
+    return <ListSkeleton />;
   }
   if (needs.isError) {
     return <ErrorState message={errorMessage(needs.error)} onRetry={() => needs.refetch()} retrying={needs.isFetching} />;
@@ -31,6 +32,7 @@ export function NeedsList({ near, locationReady }: { near: Coordinates | null; l
       ListFooterComponent={needs.isFetchingNextPage ? <ActivityIndicator color={colors.primary} /> : undefined}
       ListEmptyComponent={
         <EmptyState
+          emoji="🙏"
           title={m.needsList.emptyTitle}
           message={m.needsList.emptyMessage}
           action={<Button title={m.common.askForSomething} variant="secondary" onPress={() => router.navigate('/donate')} />}

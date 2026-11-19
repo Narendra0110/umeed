@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { Body, Button, ErrorBanner, LanguageSwitch, Loading, Screen, Title } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { useAuthUser } from '@/lib/auth';
+import { hasSeenWelcome } from '@/lib/delight';
 import { useT } from '@/lib/i18n';
 import { syncLanguage, useProfile, useUpdateLanguage } from '@/lib/profile';
 
@@ -35,7 +36,7 @@ export default function Index() {
     return <Loading />;
   }
   if (!user) {
-    return <Redirect href="/login" />;
+    return <Redirect href={hasSeenWelcome() ? '/login' : '/welcome'} />;
   }
   if (profile.isPending) {
     return <Loading />;

@@ -4,7 +4,8 @@ import { ActivityIndicator, Alert, RefreshControl, SectionList, StyleSheet, View
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ListRow, SectionTitle } from '@/components/list-row';
-import { Button, colors, EmptyState, ErrorState, Loading, Pill, Segmented, Title } from '@/components/ui';
+import { ListSkeleton } from '@/components/skeleton';
+import { Button, colors, EmptyState, ErrorState, Pill, Segmented, Title } from '@/components/ui';
 import { errorMessage } from '@/lib/api';
 import { useMyClaims, useWithdrawClaim } from '@/lib/claims';
 import { useMyDonations } from '@/lib/donations';
@@ -51,7 +52,7 @@ function MyDonations() {
   const donations = useMyDonations();
 
   if (donations.isPending) {
-    return <Loading />;
+    return <ListSkeleton />;
   }
   if (donations.isError) {
     return (
@@ -66,6 +67,7 @@ function MyDonations() {
   if (items.length === 0) {
     return (
       <EmptyState
+        emoji="📦"
         title={m.activity.noDonationsTitle}
         message={m.activity.noDonationsMessage}
         action={<Button title={m.common.giveAnItem} onPress={() => router.navigate('/donate')} />}
@@ -113,7 +115,7 @@ function MyClaims() {
   const withdraw = useWithdrawClaim();
 
   if (claims.isPending) {
-    return <Loading />;
+    return <ListSkeleton />;
   }
   if (claims.isError) {
     return (
@@ -124,6 +126,7 @@ function MyClaims() {
   if (items.length === 0) {
     return (
       <EmptyState
+        emoji="🙌"
         title={m.activity.noClaimsTitle}
         message={m.activity.noClaimsMessage}
         action={<Button title={m.activity.browse} onPress={() => router.navigate('/feed')} />}
@@ -208,7 +211,7 @@ function MyNeedsAndOffers() {
   const withdraw = useWithdrawOffer();
 
   if (needs.isPending || offers.isPending) {
-    return <Loading />;
+    return <ListSkeleton />;
   }
   if (needs.isError || offers.isError) {
     return (
@@ -227,6 +230,7 @@ function MyNeedsAndOffers() {
   if (myNeeds.length === 0 && myOffers.length === 0) {
     return (
       <EmptyState
+        emoji="🙏"
         title={m.activity.noNeedsTitle}
         message={m.activity.noNeedsMessage}
         action={<Button title={m.common.askForSomething} onPress={() => router.navigate('/donate')} />}
